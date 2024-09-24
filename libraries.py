@@ -31,18 +31,20 @@ def KolomnamenDataBase(format_header, bestandsnaam='column_namen_referentie_best
     kolomnamen = [kolom.strip() for kolom in kolomnamen_str.split(';')]
     return kolomnamen
 
-def KolomNamenJuistZetten(dataframe):
-    #print(df.iloc[0,2])
-    #print(df.head())
+def KolomNamenJuistZetten(dataframe,debug=False):
+    if debug:
+        print(dataframe.iloc[0,2])
+        print(dataframe.head())
     kolomnamen = KolomnamenDataBase(dataframe.iloc[0,2])
-    #print(kolomnamen)
-    #print(len(kolomnamen))
-    #for i in range(len(kolomnamen)):
-    #    print(i+1,kolomnamen[i])
+    if debug:
+        print(kolomnamen)
+        print(len(kolomnamen))
+        for i in range(len(kolomnamen)):
+            print(i+1,kolomnamen[i])
     dataframe.columns = kolomnamen[0:-1]
     return dataframe
 
-def DataInladen(directory_data):
+def DataInladen(directory_data,debug=False):
     # Data inladen direct als DataFrame en kolomnamen aanpassen
     df = pd.read_csv(
     directory_data,
@@ -51,7 +53,7 @@ def DataInladen(directory_data):
     comment="#",
     on_bad_lines='skip'
     )
-    df = KolomNamenJuistZetten(df)
+    df = KolomNamenJuistZetten(df,debug)
     return df
 
 def flat_plot(data_file, height = 'Snelheid over de grond in km/h'):

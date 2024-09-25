@@ -51,7 +51,7 @@ def DataInladen(directory_data,debug=False):
     delimiter=',',
     encoding='latin1',
     comment="#",
-    on_bad_lines='skip'
+    error_bad_lines=False
     )
     df = KolomNamenJuistZetten(df,debug)
     return df

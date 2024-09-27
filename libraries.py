@@ -56,19 +56,6 @@ def DataInladen(directory_data,debug=False):
     df = KolomNamenJuistZetten(df,debug)
     return df
 
-def flat_plot(data_file, height = 'Snelheid over de grond in km/h'):
-    plt.figure(figsize=(6,6))
-    plt.scatter(data_file['Latitude'], data_file['Longitude'], c=data_file[height], cmap='viridis')
-    plt.title('GPS data vs speed')
-    plt.xlabel('Latitude')
-    plt.ylabel('Longitude')
-
-    # Adding a colorbar with a label for the speed in km/h
-    cbar = plt.colorbar()
-    cbar.set_label('Speed (km/h)')
-    plt.grid()
-    plt.show()
-    return None
 
 
 # Update the function to use the correct time columns based on the observed data

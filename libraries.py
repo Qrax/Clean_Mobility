@@ -107,6 +107,100 @@ def resample_and_merge(df1_n, df2_n, freq='1S', time_column_df1='Dataloggertijd,
     return merged_df
 
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import numpy as np
+from scipy import stats
+from numpy.polynomial import Polynomial
+
+
+def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=None, degree=1, plot_z_as='heatmap'):
+    """
+    Plots the data based on the provided x, y, and optional z axis columns. Supports 2D and 3D plotting.
+
+    Parameters:
+    - data: DataFrame containing the data to plot.
+    - x_col: Name of the column for the X-axis.
+    - y_col: Name of the column for the Y-axis.
+    - z_col: Name of the column for the Z-axis (optional, if not provided, a 2D plot is generated).
+    - plot_type: Type of plot ('scatter', 'line'). Default is 'scatter'.
+    - trendline: Type of trendline ('linear', 'polynomial'). Default is None.
+    - degree: Degree of the polynomial trendline (if applicable). Default is 1.
+    - plot_z_as: How to handle the Z-axis if it's provided ('3d' for a 3D plot, 'heatmap' for a 2D scatter with heatmap). Default is 'heatmap'.
+    """
+    # Extract data and remove NaN/Inf values
+    x = data[x_col].values
+    y = data[y_col].values
+    mask = np.isfinite(x) & np.isfinite(y)
+
+    if z_col is not None:
+        z = data[z_col].values
+        mask &= np.isfinite(z)
+        z = z[mask]
+
+    x = x[mask]
+    y = y[mask]
+
+    fig = plt.figure(figsize=(8, 8))
+
+    if z_col is not None and plot_z_as == '3d':
+        # 3D plot
+        ax = fig.add_subplot(111, projection='3d')
+
+        if plot_type == 'scatter':
+            scatter = ax.scatter(x, y, z, c=z, cmap='viridis', s=10)
+            cbar = plt.colorbar(scatter, ax=ax, pad=0.1)
+            cbar.set_label(f'{z_col}')
+        elif plot_type == 'line':
+            ax.plot(x, y, z)
+
+        ax.set_title(f'{x_col} vs {y_col} vs {z_col}')
+        ax.set_xlabel(x_col)
+        ax.set_ylabel(y_col)
+        ax.set_zlabel(z_col)
+
+    elif z_col is not None and plot_z_as == 'heatmap':
+        # 2D plot with heatmap (color for z-axis)
+        ax = fig.add_subplot(111)
+
+        scatter = ax.scatter(x, y, c=z, cmap='viridis', s=10)
+        cbar = plt.colorbar(scatter, ax=ax, pad=0.1)
+        cbar.set_label(f'{z_col}')
+
+        ax.set_title(f'{x_col} vs {y_col} (Color: {z_col})')
+        ax.set_xlabel(x_col)
+        ax.set_ylabel(y_col)
+
+    else:
+        # Regular 2D plot
+        ax = fig.add_subplot(111)
+
+        if plot_type == 'scatter':
+            ax.scatter(x, y, c='b', s=10)
+        elif plot_type == 'line':
+            ax.plot(x, y)
+
+        # Add trendline if requested
+        if trendline == 'linear':
+            slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+            ax.plot(x, slope * x + intercept, color='red', label='Linear Trendline')
+        elif trendline == 'polynomial':
+            try:
+                p = Polynomial.fit(x, y, degree)
+                ax.plot(x, p(x), color='red', label=f'Polynomial Trendline (degree {degree})')
+            except np.linalg.LinAlgError as e:
+                print(f"Error fitting polynomial trendline: {e}")
+
+        ax.set_title(f'{x_col} vs {y_col}')
+        ax.set_xlabel(x_col)
+        ax.set_ylabel(y_col)
+
+    # Check if a label exists for the legend, and add it
+    if ax.get_legend_handles_labels()[1]:  # Check if there are labels
+        ax.legend()
+
+    plt.show()
+
 
 
 

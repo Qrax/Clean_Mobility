@@ -76,6 +76,7 @@ def resample_and_merge(df1_n, df2_n, freq='1S', time_column_df1='Dataloggertijd,
                        time_column_df2='Dataloggertijd, in s'):
     df1 = df1_n.copy()
     df2 = df2_n.copy()
+
     # Convert the time columns (which are in seconds) to a numeric format, forcing errors to NaN
     df1[time_column_df1] = pd.to_numeric(df1[time_column_df1], errors='coerce')
     df2[time_column_df2] = pd.to_numeric(df2[time_column_df2], errors='coerce')
@@ -96,14 +97,16 @@ def resample_and_merge(df1_n, df2_n, freq='1S', time_column_df1='Dataloggertijd,
     df1.set_index(time_column_df1, inplace=True)
     df2.set_index(time_column_df2, inplace=True)
 
-    # Resample both dataframes to the desired frequency (1 second by default)
-    df1_resampled = df1.resample(freq).mean()
-    df2_resampled = df2.resample(freq).mean()
+    # Resample both dataframes to the desired frequency (1 second by default), ensuring only numeric columns are aggregated
+    df1_resampled = df1.resample(freq).mean(numeric_only=True)
+    df2_resampled = df2.resample(freq).mean(numeric_only=True)
 
     # Merge the two dataframes based on the time index
     merged_df = pd.merge(df1_resampled, df2_resampled, left_index=True, right_index=True, how='outer')
 
     return merged_df
+
+
 
 
 

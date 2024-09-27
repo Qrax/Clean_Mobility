@@ -57,7 +57,6 @@ def DataInladen(directory_data,debug=False):
     return df
 
 
-
 # Update the function to use the correct time columns based on the observed data
 def resample_and_merge(df1_n, df2_n, freq='1S', time_column_df1='Dataloggertijd, in s',
                        time_column_df2='Dataloggertijd, in s'):

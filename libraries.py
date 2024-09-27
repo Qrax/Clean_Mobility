@@ -69,16 +69,16 @@ def resample_and_merge(df1_n, df2_n, freq='1S', time_column_df1='Dataloggertijd,
     df2 = df2_n.copy()
 
     # Convert the time columns (which are in seconds) to a numeric format, forcing errors to NaN
-    df1[time_column_df1] = pd.to_numeric(df1[time_column_df1], errors='coerce')
-    df2[time_column_df2] = pd.to_numeric(df2[time_column_df2], errors='coerce')
+    df1['Indextijd'] = pd.to_numeric(df1[time_column_df1], errors='coerce')
+    df2['Indextijd'] = pd.to_numeric(df2[time_column_df2], errors='coerce')
 
     # Drop rows with NaN values in the time column
-    df1.dropna(subset=[time_column_df1], inplace=True)
-    df2.dropna(subset=[time_column_df2], inplace=True)
+    df1.dropna(subset=['Indextijd'], inplace=True)
+    df2.dropna(subset=['Indextijd'], inplace=True)
 
     # Convert the time columns (which are now numeric) to a timedelta format
-    df1['Indextijd'] = pd.to_timedelta(df1[time_column_df1], unit='s')
-    df2['Indextijd'] = pd.to_timedelta(df2[time_column_df2], unit='s')
+    df1['Indextijd'] = pd.to_timedelta(df1['Indextijd'], unit='s')
+    df2['Indextijd'] = pd.to_timedelta(df2['Indextijd'], unit='s')
 
     # Round the time columns to the nearest second (or desired frequency)
     df1['Indextijd'] = df1['Indextijd'].dt.round(freq)

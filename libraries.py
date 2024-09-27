@@ -5,6 +5,10 @@ import os
 import copy
 from math import sqrt,ceil
 from scipy.stats import linregress
+from mpl_toolkits.mplot3d import Axes3D
+from scipy import stats
+from numpy.polynomial import Polynomial
+
 
 def ImporteerKolomNamenDataBase(bestandsnaam='column_namen_referentie_bestand.csv'):
     try:
@@ -83,28 +87,31 @@ def resample_and_merge(df1_n, df2_n, freq='1S', time_column_df1='Dataloggertijd,
     df1.set_index(time_column_df1, inplace=True)
     df2.set_index(time_column_df2, inplace=True)
 
-    # Resample both dataframes to the desired frequency (1 second by default), ensuring only numeric columns are aggregated
-    df1_resampled = df1.resample(freq).mean(numeric_only=True)
-    df2_resampled = df2.resample(freq).mean(numeric_only=True)
+    # Separate numeric and non-numeric columns
+    df1_numeric = df1.select_dtypes(include=np.number)
+    df1_non_numeric = df1.select_dtypes(exclude=np.number)
+
+    df2_numeric = df2.select_dtypes(include=np.number)
+    df2_non_numeric = df2.select_dtypes(exclude=np.number)
+
+    # Resample numeric columns (mean)
+    df1_resampled_numeric = df1_numeric.resample(freq).mean()
+    df2_resampled_numeric = df2_numeric.resample(freq).mean()
+
+    # Resample non-numeric columns (using 'first' or 'last' or another aggregation method)
+    df1_resampled_non_numeric = df1_non_numeric.resample(freq).first()  # Or use 'last' or another method
+    df2_resampled_non_numeric = df2_non_numeric.resample(freq).first()
+
+    # Combine resampled numeric and non-numeric dataframes
+    df1_resampled = pd.concat([df1_resampled_numeric, df1_resampled_non_numeric], axis=1)
+    df2_resampled = pd.concat([df2_resampled_numeric, df2_resampled_non_numeric], axis=1)
 
     # Merge the two dataframes based on the time index
-    merged_df = pd.merge(df1_resampled, df2_resampled, left_index=True, right_index=True, how='outer')
+    merged_df = pd.merge(df1_resampled, df2_resampled, left_index=True, right_index=True, how='outer', suffixes=('_df1', '_df2'))
 
     return merged_df
 
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import numpy as np
-from scipy import stats
-from numpy.polynomial import Polynomial
-
-
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import numpy as np
-from scipy import stats
-from numpy.polynomial import Polynomial
 
 def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=None, degree=1, plot_z_as='heatmap'):
     """

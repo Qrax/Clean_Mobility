@@ -306,6 +306,101 @@ def plot_window(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=N
     ax.legend()
     plt.show()
 
+from ipywidgets import widgets
+from IPython.display import display
+
+# Aangepaste resample_and_merge functie om meerdere dataframes te kunnen verwerken
+def resample_and_merge_multiple(dfs, freq='1S', time_column='Dataloggertijd, in s'):
+    resampled_dfs = []
+
+    for df in dfs:
+        df = df.copy()
+        # Convert the time column to numeric format
+        df['Indextijd'] = pd.to_numeric(df[time_column], errors='coerce')
+        # Drop rows with NaN in the time column
+        df.dropna(subset=['Indextijd'], inplace=True)
+        # Convert to timedelta
+        df['Indextijd'] = pd.to_timedelta(df['Indextijd'], unit='s')
+        # Round the time column to the nearest frequency
+        df['Indextijd'] = df['Indextijd'].dt.round(freq)
+        # Set as index
+        df.set_index('Indextijd', inplace=True)
+        # Separate numeric and non-numeric columns
+        df_numeric = df.select_dtypes(include=np.number)
+        df_non_numeric = df.select_dtypes(exclude=np.number)
+        # Resample
+        df_resampled_numeric = df_numeric.resample(freq).mean()
+        df_resampled_non_numeric = df_non_numeric.resample(freq).first()
+        # Combine
+        df_resampled = pd.concat([df_resampled_numeric, df_resampled_non_numeric], axis=1)
+        resampled_dfs.append(df_resampled)
+
+    # Merge all dataframes on the index
+    from functools import reduce
+    merged_df = reduce(lambda left, right: pd.merge(left, right, left_index=True, right_index=True, how='outer'), resampled_dfs)
+    return merged_df
+
+def DataUitzoekenGui(directory,freq='1S'):
+    # Haal de lijst van bestanden op in de directory (optioneel filteren op .csv bestanden)
+    files_in_directory = [f for f in os.listdir(directory) if f.endswith('.csv')]
+
+    # Maak een selectiemenu voor de bestanden
+    file_selector = widgets.SelectMultiple(
+        options=files_in_directory,
+        description='Bestanden:',
+        disabled=False
+    )
+
+    # Label om statusberichten te tonen
+    status_label = widgets.Label(value='')
+
+    # Hier definiëren we een mutable object om de returnwaarde op te slaan
+    result = {}
+
+    # Functie om de geselecteerde bestanden in te laden en te mergen
+    def load_files(b):
+        print('data aant laden')
+        selected_files = file_selector.value
+        if not selected_files:
+            status_label.value = 'Geen bestanden geselecteerd.'
+            return
+
+        dataframes = []
+        for file_name in selected_files:
+            file_path = os.path.join(directory, file_name)
+            data = DataInladen(file_path, debug=False)
+            dataframes.append(data)
+            print(f"{file_name} is geladen.")
+
+        # Merge de dataframes
+        merged_df = resample_and_merge_multiple(dataframes,freq=freq)
+        print("Alle dataframes zijn samengevoegd.")
+
+        # Sla het samengevoegde dataframe op in het result dict
+        result['merged_df'] = merged_df
+
+        status_label.value = 'Bestanden geladen en samengevoegd.'
+
+    # Knop om de bestanden te laden
+    load_button = widgets.Button(
+        description='Bestanden Laden',
+        disabled=False,
+        button_style='success',
+        tooltip='Klik om de geselecteerde bestanden te laden en samen te voegen',
+        icon='check'
+    )
+
+    # Koppel de functie aan de knop
+    load_button.on_click(load_files)
+
+    # Toon de widgets
+    display(file_selector)
+    display(load_button)
+    display(status_label)
+
+    # Return het result dict zodat je er buiten de functie bij kunt
+    return result
+
 
 def launch_plot_window(df):
     # Create the pop-up window

@@ -51,7 +51,7 @@ def DataInladen(directory_data,debug=False):
     delimiter=',',
     encoding='latin1',
     comment="#",
-    on_bad_lines='warn'
+    on_bad_lines='skip'
     )
     df = KolomNamenJuistZetten(df,debug)
     return df
@@ -99,6 +99,12 @@ import numpy as np
 from scipy import stats
 from numpy.polynomial import Polynomial
 
+
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import numpy as np
+from scipy import stats
+from numpy.polynomial import Polynomial
 
 def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=None, degree=1, plot_z_as='heatmap'):
     """
@@ -168,12 +174,33 @@ def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=Non
 
         # Add trendline if requested
         if trendline == 'linear':
+            # Perform linear regression
             slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
             ax.plot(x, slope * x + intercept, color='red', label='Linear Trendline')
+
+            # Add the equation and R-squared value to the plot
+            equation_text = f'y = {slope:.3f}x + {intercept:.3f}\nR² = {r_value**2:.3f}'
+            ax.text(0.05, 0.95, equation_text, transform=ax.transAxes, fontsize=12, verticalalignment='top')
+
         elif trendline == 'polynomial':
             try:
+                # Perform polynomial regression
                 p = Polynomial.fit(x, y, degree)
-                ax.plot(x, p(x), color='red', label=f'Polynomial Trendline (degree {degree})')
+                y_fit = p(x)
+                ax.plot(x, y_fit, color='red', label=f'Polynomial Trendline (degree {degree})')
+
+                # Calculate R-squared value for polynomial regression
+                residuals = y - y_fit
+                ss_res = np.sum(residuals**2)
+                ss_tot = np.sum((y - np.mean(y))**2)
+                r_squared = 1 - (ss_res / ss_tot)
+
+                # Add the polynomial equation and R-squared value to the plot
+                coef = p.convert().coef  # Get the polynomial coefficients in standard form
+                poly_eq = " + ".join([f"{coef[i]:.3f}x^{i}" if i > 0 else f"{coef[i]:.3f}" for i in range(len(coef))])
+                equation_text = f'y = {poly_eq}\nR² = {r_squared:.3f}'
+                ax.text(0.05, 0.95, equation_text, transform=ax.transAxes, fontsize=12, verticalalignment='top')
+
             except np.linalg.LinAlgError as e:
                 print(f"Error fitting polynomial trendline: {e}")
 
@@ -186,6 +213,7 @@ def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=Non
         ax.legend()
 
     plt.show()
+
 
 
 

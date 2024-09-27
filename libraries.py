@@ -51,7 +51,7 @@ def DataInladen(directory_data,debug=False):
     delimiter=',',
     encoding='latin1',
     comment="#",
-    error_bad_lines=False
+    on_bad_lines='warn'
     )
     df = KolomNamenJuistZetten(df,debug)
     return df
@@ -69,6 +69,41 @@ def flat_plot(data_file, height = 'Snelheid over de grond in km/h'):
     plt.grid()
     plt.show()
     return None
+
+
+# Update the function to use the correct time columns based on the observed data
+def resample_and_merge(df1_n, df2_n, freq='1S', time_column_df1='Dataloggertijd, in s',
+                       time_column_df2='Dataloggertijd, in s'):
+    df1 = df1_n.copy()
+    df2 = df2_n.copy()
+    # Convert the time columns (which are in seconds) to a numeric format, forcing errors to NaN
+    df1[time_column_df1] = pd.to_numeric(df1[time_column_df1], errors='coerce')
+    df2[time_column_df2] = pd.to_numeric(df2[time_column_df2], errors='coerce')
+
+    # Drop rows with NaN values in the time column
+    df1.dropna(subset=[time_column_df1], inplace=True)
+    df2.dropna(subset=[time_column_df2], inplace=True)
+
+    # Convert the time columns (which are now numeric) to a timedelta format
+    df1[time_column_df1] = pd.to_timedelta(df1[time_column_df1], unit='s')
+    df2[time_column_df2] = pd.to_timedelta(df2[time_column_df2], unit='s')
+
+    # Round the time columns to the nearest second (or desired frequency)
+    df1[time_column_df1] = df1[time_column_df1].dt.round(freq)
+    df2[time_column_df2] = df2[time_column_df2].dt.round(freq)
+
+    # Set the time columns as the index
+    df1.set_index(time_column_df1, inplace=True)
+    df2.set_index(time_column_df2, inplace=True)
+
+    # Resample both dataframes to the desired frequency (1 second by default)
+    df1_resampled = df1.resample(freq).mean()
+    df2_resampled = df2.resample(freq).mean()
+
+    # Merge the two dataframes based on the time index
+    merged_df = pd.merge(df1_resampled, df2_resampled, left_index=True, right_index=True, how='outer')
+
+    return merged_df
 
 
 

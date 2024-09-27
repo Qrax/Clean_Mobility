@@ -153,8 +153,8 @@ resample_and_merge(df1, df2, freq='1T', time_column_df1='Time', time_column_df2=
 
 ---
 
-## `launch_plot_window`
-This repository includes a `launch_plot_window` function that creates an interactive GUI for configuring and plotting data with 2D/3D options and trendline selection.
+## `plot_window_gui(df)`
+This repository includes a `plot_window_gui(df)` function that creates an interactive GUI for configuring and plotting data with 2D/3D options and trendline selection.
 
 ### Usage
 

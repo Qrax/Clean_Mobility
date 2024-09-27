@@ -402,7 +402,7 @@ def DataUitzoekenGui(directory,freq='1S'):
     return result
 
 
-def launch_plot_window(df):
+def plot_window_gui(df):
     # Create the pop-up window
     window = tk.Tk()
     window.title("Plot Data Configuration")

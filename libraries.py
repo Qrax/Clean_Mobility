@@ -55,7 +55,8 @@ def DataInladen(directory_data,debug=False):
     delimiter=',',
     encoding='latin1',
     comment="#",
-    on_bad_lines='skip'
+    on_bad_lines='skip',
+    low_memory = False
     )
     df = KolomNamenJuistZetten(df,debug)
     return df
@@ -128,8 +129,8 @@ def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=Non
     - plot_z_as: How to handle the Z-axis if it's provided ('3d' for a 3D plot, 'heatmap' for a 2D scatter with heatmap). Default is 'heatmap'.
     """
     # Extract data and remove NaN/Inf values
-    x = data[x_col].values
-    y = data[y_col].values
+    x = pd.to_numeric(data[x_col], errors='coerce').values
+    y = pd.to_numeric(data[y_col], errors='coerce').values
     mask = np.isfinite(x) & np.isfinite(y)
 
     if z_col is not None:

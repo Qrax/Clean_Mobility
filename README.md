@@ -150,3 +150,103 @@ resample_and_merge(df1_n, df2_n, freq='1S', time_column_df1='Dataloggertijd, in 
 ```python
 resample_and_merge(df1, df2, freq='1T', time_column_df1='Time', time_column_df2='Time')
 ```
+
+---
+
+## `launch_plot_window`
+This repository includes a `launch_plot_window` function that creates an interactive GUI for configuring and plotting data with 2D/3D options and trendline selection.
+
+### Usage
+
+```python
+plot_window_gui(df)
+```
+
+### Parameters
+
+| **Parameter**   | **Description**                                      | **Possible Values**                                  | **Default**     | **Example**                            |
+|-----------------|------------------------------------------------------|------------------------------------------------------|-----------------|----------------------------------------|
+| `df`            | DataFrame containing the data                        | Any pandas DataFrame                                 | N/A             | `data_file_filtered`                   |
+
+### GUI Elements
+
+| **Element**      | **Description**                                      | **Possible Values**                                  | **Default**     | **Example**                            |
+|------------------|------------------------------------------------------|------------------------------------------------------|-----------------|----------------------------------------|
+| `x_axis`         | Dropdown to select the X-axis column                 | String (column name)                                 | N/A             | `'Latitude'`                           |
+| `y_axis`         | Dropdown to select the Y-axis column                 | String (column name)                                 | N/A             | `'Longitude'`                          |
+| `z_axis`         | Dropdown to select the Z-axis column (optional)      | String (column name) or `None`                       | `None`          | `'Speed over ground in km/h'`          |
+| `plot_type`      | Dropdown to select the plot type                     | `'scatter'`, `'line'`                                | `'scatter'`     | `'line'`                               |
+| `trendline`      | Dropdown to add a trendline to the plot (optional)   | `'linear'`, `'polynomial'`, `None`                   | `None`          | `'linear'`, `'polynomial'`             |
+| `degree`         | Slider to select the degree of the polynomial trendline | Integer (e.g., `1`, `2`, `3`)                        | `1`             | `2`                                    |
+| `plot_z_as`      | Dropdown to select how to handle the Z-axis          | `'3d'` (3D plot), `'heatmap'` (2D plot with heatmap) | `'heatmap'`     | `'3d'`                                 |
+| `plot_button`    | Button to trigger the plot                           | N/A                                                  | N/A             | Press to generate the plot             |
+
+### Example
+
+```python
+plot_window_gui(data_file_filtered)
+```
+
+Once the GUI is launched, users can select columns, plot types, trendlines, and other options through the dropdowns and sliders, then press the "Plot" button to visualize the data.
+
+---
+
+## `variable_selector`
+This repository includes a `variable_selector` function that opens a pop-up window, allowing users to interactively select columns for the X-axis, Y-axis, and optionally Z-axis from a DataFrame.
+
+### Usage
+
+```python
+x_as, y_as, z_as = variable_selector(df)
+```
+
+### Parameters
+
+| **Parameter**   | **Description**                                      | **Possible Values**                                  | **Default**     | **Example**                            |
+|-----------------|------------------------------------------------------|------------------------------------------------------|-----------------|----------------------------------------|
+| `df`            | DataFrame containing the data                        | Any pandas DataFrame                                 | N/A             | `merged_df`                            |
+
+### Returns
+
+| **Return Value** | **Description**                                      | **Type**                                              | **Example**                            |
+|------------------|------------------------------------------------------|-------------------------------------------------------|----------------------------------------|
+| `x_as`           | Selected X-axis column                               | String (column name)                                  | `'Latitude'`                           |
+| `y_as`           | Selected Y-axis column                               | String (column name)                                  | `'Longitude'`                          |
+| `z_as`           | Selected Z-axis column (optional)                    | String (column name) or `None`                        | `'Speed over ground in km/h'`          |
+
+### GUI Elements
+
+| **Element**      | **Description**                                      | **Possible Values**                                  | **Default**     | **Example**                            |
+|------------------|------------------------------------------------------|------------------------------------------------------|-----------------|----------------------------------------|
+| `x_as`           | Dropdown to select the X-axis column                 | String (column name)                                 | None            | `'Latitude'`                           |
+| `y_as`           | Dropdown to select the Y-axis column                 | String (column name)                                 | None            | `'Longitude'`                          |
+| `z_as`           | Dropdown to select the Z-axis column (optional)      | String (column name) or `None`                       | None            | `'Speed over ground in km/h'`          |
+| `Set` Button     | Button to confirm and store the selected columns     | N/A                                                  | N/A             | Press to confirm selections            |
+
+### Example
+
+```python
+# Assuming df is your DataFrame
+x_as, y_as, z_as = variable_selector(df)
+
+# Now use the selected columns for plotting or other operations
+print(f"Selected X: {x_as}, Y: {y_as}, Z: {z_as}")
+
+# For example, you can call your plot function:
+plot_data(filtered_df, x_as, y_as, z_as)
+```
+
+### Example Output:
+
+After selecting the columns and pressing "Set" in the pop-up window, the selected columns will be stored in the variables `x_as`, `y_as`, and `z_as`:
+
+```python
+Selected X: 'Latitude'
+Selected Y: 'Longitude'
+Selected Z: 'Speed over ground in km/h'
+```
+
+These variables can then be used directly in your functions for plotting or other analysis.
+
+---
+

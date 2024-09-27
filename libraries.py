@@ -77,16 +77,16 @@ def resample_and_merge(df1_n, df2_n, freq='1S', time_column_df1='Dataloggertijd,
     df2.dropna(subset=[time_column_df2], inplace=True)
 
     # Convert the time columns (which are now numeric) to a timedelta format
-    df1[time_column_df1] = pd.to_timedelta(df1[time_column_df1], unit='s')
-    df2[time_column_df2] = pd.to_timedelta(df2[time_column_df2], unit='s')
+    df1['Indextijd'] = pd.to_timedelta(df1[time_column_df1], unit='s')
+    df2['Indextijd'] = pd.to_timedelta(df2[time_column_df2], unit='s')
 
     # Round the time columns to the nearest second (or desired frequency)
-    df1[time_column_df1] = df1[time_column_df1].dt.round(freq)
-    df2[time_column_df2] = df2[time_column_df2].dt.round(freq)
+    df1['Indextijd'] = df1['Indextijd'].dt.round(freq)
+    df2['Indextijd'] = df2['Indextijd'].dt.round(freq)
 
     # Set the time columns as the index
-    df1.set_index(time_column_df1, inplace=True)
-    df2.set_index(time_column_df2, inplace=True)
+    df1.set_index('Indextijd', inplace=True)
+    df2.set_index('Indextijd', inplace=True)
 
     # Separate numeric and non-numeric columns
     df1_numeric = df1.select_dtypes(include=np.number)

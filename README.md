@@ -250,3 +250,81 @@ These variables can then be used directly in your functions for plotting or othe
 
 ---
 
+---
+
+## `resample_and_merge_multiple`
+
+This function resamples and merges multiple dataframes based on a specified time frequency. It processes each dataframe by converting a time column to a datetime index, resampling numeric and non-numeric columns appropriately, and then merges all resampled dataframes on their indices.
+
+### Usage
+
+```python
+merged_df = resample_and_merge_multiple(dfs, freq='1S', time_column='Dataloggertijd, in s')
+```
+
+### Parameters
+
+| **Parameter**   | **Description**                                           | **Possible Values**              | **Default**                | **Example**                       |
+|-----------------|-----------------------------------------------------------|----------------------------------|----------------------------|-----------------------------------|
+| `dfs`           | List of DataFrames to resample and merge                  | List of pandas DataFrames        | N/A                        | `[df1, df2, df3]`                 |
+| `freq`          | Frequency for resampling the data                         | String (e.g., `'1S'`, `'5T'`)    | `'1S'`                     | `'5T'`                            |
+| `time_column`   | Name of the time column in each DataFrame                 | String (column name)             | `'Dataloggertijd, in s'`   | `'Time'`                          |
+
+### Returns
+
+| **Return Value** | **Description**                                           | **Type**              |
+|------------------|-----------------------------------------------------------|-----------------------|
+| `merged_df`      | Merged DataFrame after resampling                         | pandas DataFrame      |
+
+### Example
+
+```python
+# Assuming dfs is a list of DataFrames you want to resample and merge
+merged_df = resample_and_merge_multiple(dfs, freq='1T', time_column='Time')
+```
+
+---
+
+## `DataUitzoekenGui`
+
+This function creates an interactive GUI for selecting and loading multiple CSV files from a specified directory. It allows users to select multiple files, load them into DataFrames, resample and merge them using `resample_and_merge_multiple`, and provides feedback through a status label.
+
+### Usage
+
+```python
+result = DataUitzoekenGui(directory, freq='1S')
+```
+
+### Parameters
+
+| **Parameter**   | **Description**                                    | **Possible Values**              | **Default**                | **Example**                       |
+|-----------------|----------------------------------------------------|----------------------------------|----------------------------|-----------------------------------|
+| `directory`     | The directory path containing the CSV files        | String (directory path)          | N/A                        | `'data/csv_files'`                |
+| `freq`          | Frequency for resampling the data                  | String (e.g., `'1S'`, `'5T'`)    | `'1S'`                     | `'5T'`                            |
+
+### Returns
+
+| **Return Value** | **Description**                                      | **Type**              |
+|------------------|------------------------------------------------------|-----------------------|
+| `result`         | Dictionary containing the merged DataFrame           | `{'merged_df': DataFrame}` |
+
+### GUI Elements
+
+- **File Selector**: A multi-select widget listing all `.csv` files in the specified directory.
+- **Load Button**: A button to load and merge the selected files.
+- **Status Label**: A label to display status messages.
+
+### Example
+
+```python
+# Launch the GUI for selecting and merging CSV files
+result = DataUitzoekenGui('data/csv_files', freq='1T')
+
+# After loading, access the merged DataFrame
+merged_df = result.get('merged_df')
+
+# Use the merged DataFrame as needed
+print(merged_df.head())
+```
+
+---

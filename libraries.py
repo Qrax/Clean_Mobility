@@ -401,45 +401,51 @@ def DataUitzoekenGui(directory,freq='1S'):
     # Return het result dict zodat je er buiten de functie bij kunt
     return result
 
+import tkinter as tk
+from tkinter import ttk
+
+import tkinter as tk
+from tkinter import ttk
 
 def plot_window_gui(df):
     # Create the pop-up window
     window = tk.Tk()
     window.title("Plot Data Configuration")
+    window.geometry("1000x460")  # Make the window bigger for better visibility
 
     # Labels and dropdowns for x, y, and z axes
-    tk.Label(window, text="Select X-axis").grid(row=0, column=0)
-    x_axis = ttk.Combobox(window, values=df.columns.to_list())
-    x_axis.grid(row=0, column=1)
+    tk.Label(window, text="Select X-axis", font=("Arial", 14)).grid(row=0, column=0, padx=10, pady=10, sticky="w")
+    x_axis = ttk.Combobox(window, values=df.columns.to_list(), width=50, font=("Arial", 14))  # Larger width and font
+    x_axis.grid(row=0, column=1, padx=10, pady=10)
 
-    tk.Label(window, text="Select Y-axis").grid(row=1, column=0)
-    y_axis = ttk.Combobox(window, values=df.columns.to_list())
-    y_axis.grid(row=1, column=1)
+    tk.Label(window, text="Select Y-axis", font=("Arial", 14)).grid(row=1, column=0, padx=10, pady=10, sticky="w")
+    y_axis = ttk.Combobox(window, values=df.columns.to_list(), width=50, font=("Arial", 14))  # Larger width and font
+    y_axis.grid(row=1, column=1, padx=10, pady=10)
 
-    tk.Label(window, text="Select Z-axis (optional)").grid(row=2, column=0)
-    z_axis = ttk.Combobox(window, values=[None] + df.columns.to_list())
-    z_axis.grid(row=2, column=1)
+    tk.Label(window, text="Select Z-axis (optional)", font=("Arial", 14)).grid(row=2, column=0, padx=10, pady=10, sticky="w")
+    z_axis = ttk.Combobox(window, values=[None] + df.columns.to_list(), width=50, font=("Arial", 14))  # Larger width and font
+    z_axis.grid(row=2, column=1, padx=10, pady=10)
 
     # Plot type dropdown
-    tk.Label(window, text="Select Plot Type").grid(row=3, column=0)
-    plot_type = ttk.Combobox(window, values=['scatter', 'line'])
+    tk.Label(window, text="Select Plot Type", font=("Arial", 14)).grid(row=3, column=0, padx=10, pady=10, sticky="w")
+    plot_type = ttk.Combobox(window, values=['scatter', 'line'], width=50, font=("Arial", 14))  # Larger width and font
     plot_type.set('scatter')  # Default value
-    plot_type.grid(row=3, column=1)
+    plot_type.grid(row=3, column=1, padx=10, pady=10)
 
     # Trendline type dropdown
-    tk.Label(window, text="Select Trendline").grid(row=4, column=0)
-    trendline = ttk.Combobox(window, values=[None, 'linear', 'polynomial'])
-    trendline.grid(row=4, column=1)
+    tk.Label(window, text="Select Trendline", font=("Arial", 14)).grid(row=4, column=0, padx=10, pady=10, sticky="w")
+    trendline = ttk.Combobox(window, values=[None, 'linear', 'polynomial'], width=50, font=("Arial", 14))  # Larger width and font
+    trendline.grid(row=4, column=1, padx=10, pady=10)
 
     # Polynomial degree slider (only for polynomial trendlines)
-    tk.Label(window, text="Polynomial Degree (for polynomial trendline)").grid(row=5, column=0)
-    degree = tk.Scale(window, from_=1, to=5, orient=tk.HORIZONTAL)
-    degree.grid(row=5, column=1)
+    tk.Label(window, text="Polynomial Degree (for polynomial trendline)", font=("Arial", 14)).grid(row=5, column=0, padx=10, pady=10, sticky="w")
+    degree = tk.Scale(window, from_=1, to=5, orient=tk.HORIZONTAL, font=("Arial", 14))  # Larger font
+    degree.grid(row=5, column=1, padx=10, pady=10)
 
     # Z-axis plot type
-    tk.Label(window, text="Plot Z axis as").grid(row=6, column=0)
-    plot_z_as = ttk.Combobox(window, values=['heatmap', '3d'])
-    plot_z_as.grid(row=6, column=1)
+    tk.Label(window, text="Plot Z axis as", font=("Arial", 14)).grid(row=6, column=0, padx=10, pady=10, sticky="w")
+    plot_z_as = ttk.Combobox(window, values=['heatmap', '3d'], width=50, font=("Arial", 14))  # Larger width and font
+    plot_z_as.grid(row=6, column=1, padx=10, pady=10)
 
     def plot_button_action():
         x_col = x_axis.get()
@@ -456,12 +462,11 @@ def plot_window_gui(df):
         else:
             print("Please select both X and Y columns.")
 
-    # Button to plot the data
-    plot_button = tk.Button(window, text="Plot", command=plot_button_action)
-    plot_button.grid(row=7, column=0, columnspan=2)
+    # Button to plot the data with significantly increased width and height
+    plot_button = tk.Button(window, text="Plot", command=plot_button_action, width=20, height=2, font=("Arial", 14))  # Big button with larger font
+    plot_button.grid(row=7, column=0, columnspan=2, padx=10, pady=20)
 
     window.mainloop()
-
 
 import ipywidgets as widgets
 from IPython.display import display
@@ -489,10 +494,6 @@ x_as = None
 y_as = None
 z_as = None
 
-import ipywidgets as widgets
-from IPython.display import display
-
-
 def variable_selector(df):
     """
     Create a pop-up window to select columns for x_as, y_as, and z_as.
@@ -506,6 +507,7 @@ def variable_selector(df):
     # Create a pop-up window
     window = tk.Tk()
     window.title("Select Variables")
+    window.geometry("900x250")  # Make the window bigger for better visibility
 
     # Variables to store the selections
     x_as = tk.StringVar()
@@ -513,22 +515,22 @@ def variable_selector(df):
     z_as = tk.StringVar()
 
     # Dropdown for x_as
-    tk.Label(window, text="Select X-axis:").grid(row=0, column=0)
-    x_dropdown = ttk.Combobox(window, textvariable=x_as)
+    tk.Label(window, text="Select X-axis:", font=("Arial", 14)).grid(row=0, column=0, padx=10, pady=10, sticky="w")
+    x_dropdown = ttk.Combobox(window, textvariable=x_as, width=50, font=("Arial", 14))  # Significantly increased width and font size
     x_dropdown['values'] = list(df.columns)
-    x_dropdown.grid(row=0, column=1)
+    x_dropdown.grid(row=0, column=1, padx=10, pady=10)
 
     # Dropdown for y_as
-    tk.Label(window, text="Select Y-axis:").grid(row=1, column=0)
-    y_dropdown = ttk.Combobox(window, textvariable=y_as)
+    tk.Label(window, text="Select Y-axis:", font=("Arial", 14)).grid(row=1, column=0, padx=10, pady=10, sticky="w")
+    y_dropdown = ttk.Combobox(window, textvariable=y_as, width=50, font=("Arial", 14))  # Significantly increased width and font size
     y_dropdown['values'] = list(df.columns)
-    y_dropdown.grid(row=1, column=1)
+    y_dropdown.grid(row=1, column=1, padx=10, pady=10)
 
     # Dropdown for z_as (optional)
-    tk.Label(window, text="Select Z-axis (optional):").grid(row=2, column=0)
-    z_dropdown = ttk.Combobox(window, textvariable=z_as)
+    tk.Label(window, text="Select Z-axis (optional):", font=("Arial", 14)).grid(row=2, column=0, padx=10, pady=10, sticky="w")
+    z_dropdown = ttk.Combobox(window, textvariable=z_as, width=50, font=("Arial", 14))  # Significantly increased width and font size
     z_dropdown['values'] = [None] + list(df.columns)
-    z_dropdown.grid(row=2, column=1)
+    z_dropdown.grid(row=2, column=1, padx=10, pady=10)
 
     # To store selected values
     selected_values = [None, None, None]
@@ -540,15 +542,17 @@ def variable_selector(df):
         selected_values[2] = z_as.get()
         window.destroy()  # Close the window once selections are made
 
-    # "Set" button to confirm selections
-    set_button = tk.Button(window, text="Set", command=set_values)
-    set_button.grid(row=3, column=0, columnspan=2)
+    # "Set" button to confirm selections, make it much larger
+    set_button = tk.Button(window, text="Set", command=set_values, width=20, height=2, font=("Arial", 14))  # Big button with larger font
+    set_button.grid(row=3, column=0, columnspan=2, padx=10, pady=20)
 
     # Run the window loop
     window.mainloop()
 
     # Return the selected values for x_as, y_as, and z_as
     return selected_values[0], selected_values[1], selected_values[2]
+
+
 
 
 

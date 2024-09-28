@@ -468,19 +468,6 @@ def plot_window_gui(df):
 
     window.mainloop()
 
-import ipywidgets as widgets
-from IPython.display import display
-
-
-import ipywidgets as widgets
-from IPython.display import display
-
-import ipywidgets as widgets
-from IPython.display import display
-
-import ipywidgets as widgets
-from IPython.display import display
-
 # Global variables to store selected values
 x_as = None
 y_as = None
@@ -494,9 +481,15 @@ x_as = None
 y_as = None
 z_as = None
 
+import tkinter as tk
+from tkinter import ttk
+from tkinter import messagebox
+
+
 def variable_selector(df):
     """
-    Create a pop-up window to select columns for x_as, y_as, and z_as.
+    Create a pop-up window to select columns for x_as, y_as, and z_as,
+    and add a button to copy the selection code for reuse.
 
     Parameters:
     df (pd.DataFrame): The DataFrame containing the data.
@@ -516,19 +509,20 @@ def variable_selector(df):
 
     # Dropdown for x_as
     tk.Label(window, text="Select X-axis:", font=("Arial", 14)).grid(row=0, column=0, padx=10, pady=10, sticky="w")
-    x_dropdown = ttk.Combobox(window, textvariable=x_as, width=50, font=("Arial", 14))  # Significantly increased width and font size
+    x_dropdown = ttk.Combobox(window, textvariable=x_as, width=50, font=("Arial", 14))
     x_dropdown['values'] = list(df.columns)
     x_dropdown.grid(row=0, column=1, padx=10, pady=10)
 
     # Dropdown for y_as
     tk.Label(window, text="Select Y-axis:", font=("Arial", 14)).grid(row=1, column=0, padx=10, pady=10, sticky="w")
-    y_dropdown = ttk.Combobox(window, textvariable=y_as, width=50, font=("Arial", 14))  # Significantly increased width and font size
+    y_dropdown = ttk.Combobox(window, textvariable=y_as, width=50, font=("Arial", 14))
     y_dropdown['values'] = list(df.columns)
     y_dropdown.grid(row=1, column=1, padx=10, pady=10)
 
     # Dropdown for z_as (optional)
-    tk.Label(window, text="Select Z-axis (optional):", font=("Arial", 14)).grid(row=2, column=0, padx=10, pady=10, sticky="w")
-    z_dropdown = ttk.Combobox(window, textvariable=z_as, width=50, font=("Arial", 14))  # Significantly increased width and font size
+    tk.Label(window, text="Select Z-axis (optional):", font=("Arial", 14)).grid(row=2, column=0, padx=10, pady=10,
+                                                                                sticky="w")
+    z_dropdown = ttk.Combobox(window, textvariable=z_as, width=50, font=("Arial", 14))
     z_dropdown['values'] = [None] + list(df.columns)
     z_dropdown.grid(row=2, column=1, padx=10, pady=10)
 
@@ -542,9 +536,41 @@ def variable_selector(df):
         selected_values[2] = z_as.get()
         window.destroy()  # Close the window once selections are made
 
+    # Function to display the code to get selected values
+    def copy_code():
+        selected_x = x_as.get() or 'None'
+        selected_y = y_as.get() or 'None'
+        selected_z = z_as.get() or 'None'
+
+        # Python code for selecting the variables
+        code = f"x_as = '{selected_x}'\n"
+        code += f"y_as = '{selected_y}'\n"
+        code += f"z_as = '{selected_z}'\n"
+
+        # Display the code in a message box for copying
+        code_window = tk.Toplevel(window)
+        code_window.title("Generated Code")
+        code_window.geometry("500x200")
+
+        code_label = tk.Label(code_window, text="Copy the code below:", font=("Arial", 12))
+        code_label.pack(padx=10, pady=10)
+
+        code_text = tk.Text(code_window, height=6, width=60, font=("Arial", 12))
+        code_text.insert(tk.END, code)
+        code_text.pack(padx=10, pady=10)
+
+        # Automatically select the code in the text box
+        code_text.focus()
+        code_text.tag_add("selectall", "1.0", tk.END)
+        code_text.tag_config("selectall", background="lightyellow")
+
     # "Set" button to confirm selections, make it much larger
-    set_button = tk.Button(window, text="Set", command=set_values, width=20, height=2, font=("Arial", 14))  # Big button with larger font
-    set_button.grid(row=3, column=0, columnspan=2, padx=10, pady=20)
+    set_button = tk.Button(window, text="Set", command=set_values, width=20, height=2, font=("Arial", 14))
+    set_button.grid(row=3, column=0, padx=10, pady=20)
+
+    # "Copy Code" button to generate the code, much larger
+    copy_code_button = tk.Button(window, text="Copy Code", command=copy_code, width=20, height=2, font=("Arial", 14))
+    copy_code_button.grid(row=3, column=1, padx=10, pady=20)
 
     # Run the window loop
     window.mainloop()

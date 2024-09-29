@@ -90,7 +90,6 @@ def resample_and_merge(df1_n, df2_n, freq='1S', time_column_df1='Dataloggertijd,
 
     return merged_df
 
-print("kanker")
 import pandas as pd
 import numpy as np
 

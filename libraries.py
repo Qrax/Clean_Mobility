@@ -224,86 +224,112 @@ def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=Non
 
     plt.show()
 
-def plot_window(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=None, degree=1, plot_z_as='heatmap'):
-    """
-    Plots the data based on the provided x, y, and optional z axis columns. Supports 2D and 3D plotting.
-    """
-    # Extract data and remove NaN/Inf values
-    x = pd.to_numeric(data[x_col], errors='coerce').values
-    y = pd.to_numeric(data[y_col], errors='coerce').values
-    mask = np.isfinite(x) & np.isfinite(y)
 
+def plot_window(data, x_col, y_cols, z_col=None, plot_type='scatter', trendline=None, degree=1, plot_z_as='heatmap'):
+    """
+    Plots the data based on the provided x, multiple y, and optional z axis columns. Supports 2D and 3D plotting.
+    """
+    # Extract data and remove NaN/Inf values for x-axis
+    x = pd.to_numeric(data[x_col], errors='coerce').values
+    mask = np.isfinite(x)
+
+    # Handle z-axis data if provided
     if z_col is not None and z_col in data.columns:
         z = pd.to_numeric(data[z_col], errors='coerce').values
         mask &= np.isfinite(z)
         z = z[mask]
 
     x = x[mask]
-    y = y[mask]
 
-    fig = plt.figure(figsize=(8, 8))
-
-    if z_col is not None and z_col in data.columns and plot_z_as == '3d':
-        # 3D plot
+    if z_col is not None and plot_z_as == '3d':
+        # 3D plot with z-axis
+        fig = plt.figure(figsize=(8, 8))
         ax = fig.add_subplot(111, projection='3d')
+
+        y = pd.to_numeric(data[y_cols[0]], errors='coerce').values
+        y = y[mask]
+
+        # 3D scatter or line plot
         if plot_type == 'scatter':
             scatter = ax.scatter(x, y, z, c=z, cmap='viridis', s=10)
             plt.colorbar(scatter, ax=ax, pad=0.1)
         elif plot_type == 'line':
             ax.plot(x, y, z)
 
-        ax.set_title(f'{x_col} vs {y_col} vs {z_col}')
+        ax.set_title(f'{x_col} vs {y_cols[0]} vs {z_col}')
         ax.set_xlabel(x_col)
-        ax.set_ylabel(y_col)
+        ax.set_ylabel(y_cols[0])
         ax.set_zlabel(z_col)
 
-    elif z_col is not None and z_col in data.columns and plot_z_as == 'heatmap':
-        # 2D plot with heatmap (color for z-axis)
-        ax = fig.add_subplot(111)
-        scatter = ax.scatter(x, y, c=z, cmap='viridis', s=10)
-        plt.colorbar(scatter, ax=ax, pad=0.1)
+        plt.show()
+        return  # End after plotting 3D
 
-        ax.set_title(f'{x_col} vs {y_col} (Color: {z_col})')
-        ax.set_xlabel(x_col)
-        ax.set_ylabel(y_col)
+    # For 2D plots with multiple y-axes
+    fig, ax1 = plt.subplots(figsize=(8, 8))
 
-    else:
-        # Regular 2D plot
-        ax = fig.add_subplot(111)
+    # Plot the first y-axis (primary y-axis)
+    y1 = pd.to_numeric(data[y_cols[0]], errors='coerce').values
+    y1 = y1[mask]
+
+    color1 = 'tab:blue'
+    ax1.set_xlabel(x_col)
+    ax1.set_ylabel(y_cols[0], color=color1)
+    if plot_type == 'scatter':
+        if z_col and plot_z_as == 'heatmap':
+            scatter = ax1.scatter(x, y1, c=z, cmap='viridis', s=10)
+            plt.colorbar(scatter, ax=ax1, pad=0.1)
+        else:
+            ax1.scatter(x, y1, color=color1, label=y_cols[0], s=10)
+    elif plot_type == 'line':
+        ax1.plot(x, y1, color=color1, label=y_cols[0])
+
+    ax1.tick_params(axis='y', labelcolor=color1)
+
+    # Add second y-axis (on the right)
+    if len(y_cols) > 1:
+        ax2 = ax1.twinx()  # Create a second y-axis
+        y2 = pd.to_numeric(data[y_cols[1]], errors='coerce').values
+        y2 = y2[mask]
+
+        color2 = 'tab:red'
+        ax2.set_ylabel(y_cols[1], color=color2)
         if plot_type == 'scatter':
-            ax.scatter(x, y, c='b', s=10)
+            if z_col and plot_z_as == 'heatmap':
+                scatter = ax2.scatter(x, y2, c=z, cmap='viridis', s=10)
+                plt.colorbar(scatter, ax=ax2, pad=0.1)
+            else:
+                ax2.scatter(x, y2, color=color2, label=y_cols[1], s=10)
         elif plot_type == 'line':
-            ax.plot(x, y)
+            ax2.plot(x, y2, color=color2, label=y_cols[1])
 
-        # Add trendline if requested
-        if trendline == 'linear':
-            slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
-            ax.plot(x, slope * x + intercept, color='red', label='Linear Trendline')
-            equation_text = f'y = {slope:.3f}x + {intercept:.3f}\nR² = {r_value**2:.3f}'
-            ax.text(0.05, 0.95, equation_text, transform=ax.transAxes, fontsize=12, verticalalignment='top')
+        ax2.tick_params(axis='y', labelcolor=color2)
 
-        elif trendline == 'polynomial':
-            try:
-                p = Polynomial.fit(x, y, degree)
-                y_fit = p(x)
-                ax.plot(x, y_fit, color='red', label=f'Polynomial Trendline (degree {degree})')
-                residuals = y - y_fit
-                ss_res = np.sum(residuals**2)
-                ss_tot = np.sum((y - np.mean(y))**2)
-                r_squared = 1 - (ss_res / ss_tot)
-                coef = p.convert().coef
-                poly_eq = " + ".join([f"{coef[i]:.3f}x^{i}" if i > 0 else f"{coef[i]:.3f}" for i in range(len(coef))])
-                equation_text = f'y = {poly_eq}\nR² = {r_squared:.3f}'
-                ax.text(0.05, 0.95, equation_text, transform=ax.transAxes, fontsize=12, verticalalignment='top')
+    # Add third y-axis (offset slightly, sharing x-axis)
+    if len(y_cols) > 2:
+        ax3 = ax1.twinx()  # Create a third y-axis
+        y3 = pd.to_numeric(data[y_cols[2]], errors='coerce').values
+        y3 = y3[mask]
 
-            except np.linalg.LinAlgError as e:
-                print(f"Error fitting polynomial trendline: {e}")
+        # Offset the third axis to the right slightly
+        ax3.spines['right'].set_position(('outward', 60))
+        color3 = 'tab:green'
+        ax3.set_ylabel(y_cols[2], color=color3)
+        if plot_type == 'scatter':
+            if z_col and plot_z_as == 'heatmap':
+                scatter = ax3.scatter(x, y3, c=z, cmap='viridis', s=10)
+                plt.colorbar(scatter, ax=ax3, pad=0.1)
+            else:
+                ax3.scatter(x, y3, color=color3, label=y_cols[2], s=10)
+        elif plot_type == 'line':
+            ax3.plot(x, y3, color=color3, label=y_cols[2])
 
-        ax.set_title(f'{x_col} vs {y_col}')
-        ax.set_xlabel(x_col)
-        ax.set_ylabel(y_col)
+        ax3.tick_params(axis='y', labelcolor=color3)
 
-    ax.legend()
+    # Title and labels
+    ax1.set_title(f'{x_col} vs Multiple Y-Axes')
+
+    # Display plot
+    fig.tight_layout()  # Adjust layout to avoid overlap
     plt.show()
 
 from ipywidgets import widgets

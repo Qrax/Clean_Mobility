@@ -578,11 +578,103 @@ def variable_selector(df):
     # Return the selected values for x_as, y_as, and z_as
     return selected_values[0], selected_values[1], selected_values[2]
 
+def Get_directory(base_directory):
+    # Dropdown widgets voor elke stap
+    voertuig_dropdown = widgets.Dropdown(description='Voertuig:')
+    jaartal_dropdown = widgets.Dropdown(description='Jaartal:')
+    situatie_dropdown = widgets.Dropdown(description='Situatie:')
+    dataset_dropdown = widgets.Dropdown(description='Dataset:')
+
+    # Confirm-knop
+    confirm_button = widgets.Button(description="Map Laden", button_style='success')
+
+    # Output widget voor berichten of fouten
+    output = widgets.Output()
+
+    # Variabele voor het opslaan van de geselecteerde directory
+    directory = None
 
 
+    def update_jaartal_options(change):
+        """Update de jaartal dropdown op basis van het gekozen voertuig."""
+        selected_voertuig = voertuig_dropdown.value
+        voertuig_path = os.path.join(base_directory, selected_voertuig)
+
+        if os.path.exists(voertuig_path):
+            # Lijst van beschikbare jaartallen (mappen) in de voertuigmap
+            jaartal_options = [name for name in os.listdir(voertuig_path) if
+                               os.path.isdir(os.path.join(voertuig_path, name))]
+            jaartal_dropdown.options = jaartal_options
+        else:
+            jaartal_dropdown.options = []
+            situatie_dropdown.options = []
+            dataset_dropdown.options = []
 
 
+    def update_situatie_options(change):
+        """Update de situatie dropdown op basis van het gekozen jaartal."""
+        selected_voertuig = voertuig_dropdown.value
+        selected_jaartal = jaartal_dropdown.value
+        jaartal_path = os.path.join(base_directory, selected_voertuig, selected_jaartal)
+
+        if os.path.exists(jaartal_path):
+            # Lijst van beschikbare situaties (mappen) in de jaartalmap
+            situatie_options = [name for name in os.listdir(jaartal_path) if
+                                os.path.isdir(os.path.join(jaartal_path, name))]
+            situatie_dropdown.options = situatie_options
+        else:
+            situatie_dropdown.options = []
+            dataset_dropdown.options = []
 
 
+    def update_dataset_options(change):
+        """Update de dataset dropdown op basis van de gekozen situatie."""
+        selected_voertuig = voertuig_dropdown.value
+        selected_jaartal = jaartal_dropdown.value
+        selected_situatie = situatie_dropdown.value
+        situatie_path = os.path.join(base_directory, selected_voertuig, selected_jaartal, selected_situatie)
+
+        if os.path.exists(situatie_path):
+            # Lijst van beschikbare datasets (mappen) in de situatiemap
+            dataset_options = [name for name in os.listdir(situatie_path) if
+                               os.path.isdir(os.path.join(situatie_path, name))]
+            dataset_dropdown.options = dataset_options
+        else:
+            dataset_dropdown.options = []
 
 
+    def read_directory(b):
+        """Geeft het pad naar de geselecteerde datasetmap en slaat het op."""
+        global directory  # Gebruik de globale variabele om het pad op te slaan
+        selected_voertuig = voertuig_dropdown.value
+        selected_jaartal = jaartal_dropdown.value
+        selected_situatie = situatie_dropdown.value
+        selected_dataset = dataset_dropdown.value
+
+        if selected_voertuig and selected_jaartal and selected_situatie and selected_dataset:
+            # Maak het volledige pad naar de geselecteerde dataset
+            directory = os.path.join(base_directory, selected_voertuig, selected_jaartal, selected_situatie,
+                                     selected_dataset)
+            with output:
+                output.clear_output()
+                print(f"Geselecteerde map opgeslagen als 'directory': {directory}")
+        else:
+            with output:
+                output.clear_output()
+                print("Selecteer alle opties (voertuig, jaartal, situatie, dataset) om verder te gaan.")
+
+
+    # Verbind de veranderingen in de dropdowns aan hun respectievelijke update functies
+    voertuig_dropdown.observe(update_jaartal_options, names='value')
+    jaartal_dropdown.observe(update_situatie_options, names='value')
+    situatie_dropdown.observe(update_dataset_options, names='value')
+
+    # Koppel de 'Confirm'-knop aan de read_directory functie
+    confirm_button.on_click(read_directory)
+
+    # Begin met het ophalen van de voertuigen (eerste dropdown)
+    voertuig_dropdown.options = [name for name in os.listdir(base_directory) if
+                                 os.path.isdir(os.path.join(base_directory, name))]
+
+    # Toon de widgets
+    display(voertuig_dropdown, jaartal_dropdown, situatie_dropdown, dataset_dropdown, confirm_button, output)

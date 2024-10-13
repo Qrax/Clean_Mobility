@@ -380,6 +380,7 @@ def DataUitzoekenGui(directory,freq='1S'):
         result['merged_df'] = merged_df
 
         status_label.value = 'Bestanden geladen en samengevoegd.'
+        return
 
     # Knop om de bestanden te laden
     load_button = widgets.Button(

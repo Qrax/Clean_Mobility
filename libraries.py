@@ -335,7 +335,6 @@ def resample_and_merge_multiple(dfs, freq='1S', time_column='Dataloggertijd, in 
         # Combine
         df_resampled = pd.concat([df_resampled_numeric, df_resampled_non_numeric], axis=1)
         resampled_dfs.append(df_resampled)
-
     # Merge all dataframes on the index
     from functools import reduce
     merged_df = reduce(lambda left, right: pd.merge(left, right, left_index=True, right_index=True, how='outer'), resampled_dfs)
@@ -360,7 +359,7 @@ def DataUitzoekenGui(directory,freq='1S'):
 
     # Functie om de geselecteerde bestanden in te laden en te mergen
     def load_files(b):
-        print('data aant laden')
+        status_label.value = 'Data aant laden'
         selected_files = file_selector.value
         if not selected_files:
             status_label.value = 'Geen bestanden geselecteerd.'
@@ -371,9 +370,10 @@ def DataUitzoekenGui(directory,freq='1S'):
             file_path = os.path.join(directory, file_name)
             data = DataInladen(file_path, debug=False)
             dataframes.append(data)
-            print(f"{file_name} is geladen.")
+            status_label.value = f'{file_name} is geladen.'
 
         # Merge de dataframes
+        status_label.value = f'Merging dataframes'
         merged_df = resample_and_merge_multiple(dataframes,freq=freq)
         print("Alle dataframes zijn samengevoegd.")
 

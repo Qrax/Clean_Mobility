@@ -115,7 +115,7 @@ def resample_and_merge(df1_n, df2_n, freq='1S', time_column_df1='Dataloggertijd,
 
     return merged_df
 
-def plot_data_2(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=None, degree=1, plot_z_as='heatmap'):
+def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=None, degree=1, plot_z_as='heatmap'):
     """
     Plots the data based on the provided x, y, and optional z axis columns. Supports 2D and 3D plotting.
 
@@ -231,129 +231,6 @@ def plot_data_2(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=N
 
     plt.show()
 
-def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=None, degree=1, plot_z_as='heatmap'):
-    """
-    Plots the data based on the provided x, y, and optional z axis columns. Supports 2D and 3D plotting.
-
-    Parameters:
-    - data: DataFrame containing the data to plot.
-    - x_col: Name of the column for the X-axis.
-    - y_col: Name of the column for the Y-axis.
-    - z_col: Name of the column for the Z-axis (optional, if not provided, a 2D plot is generated).
-    - plot_type: Type of plot ('scatter', 'line'). Default is 'scatter'.
-    - trendline: Type of trendline ('linear', 'polynomial'). Default is None.
-    - degree: Degree of the polynomial trendline (if applicable). Default is 1.
-    - plot_z_as: How to handle the Z-axis if it's provided ('3d' for a 3D plot, 'heatmap' for a 2D scatter with heatmap). Default is 'heatmap'.
-    """
-    # Extract data and remove NaN/Inf values
-    x = pd.to_numeric(data[x_col], errors='coerce').values
-    y = pd.to_numeric(data[y_col], errors='coerce').values
-    mask = np.isfinite(x) & np.isfinite(y)
-
-    if z_col is not None:
-        z = data[z_col].values
-        mask &= np.isfinite(z)
-        z = z[mask]
-
-    x = x[mask]
-    y = y[mask]
-
-    fig = plt.figure(figsize=(8, 8))
-
-    if z_col is not None and plot_z_as == '3d':
-        # 3D plot
-        ax = fig.add_subplot(111, projection='3d')
-
-        if plot_type == 'scatter':
-            scatter = ax.scatter(x, y, z, c=z, cmap='viridis', s=10)
-            cbar = plt.colorbar(scatter, ax=ax, pad=0.1)
-            cbar.set_label(f'{z_col}')
-        elif plot_type == 'line':
-            ax.plot(x, y, z)
-
-        ax.set_title(f'{x_col} vs {y_col} vs {z_col}')
-        ax.set_xlabel(x_col)
-        ax.set_ylabel(y_col)
-        ax.set_zlabel(z_col)
-
-    elif z_col is not None and plot_z_as == 'heatmap':
-        # 2D plot with heatmap (color for z-axis)
-        ax = fig.add_subplot(111)
-
-        scatter = ax.scatter(x, y, c=z, cmap='viridis', s=10)
-        cbar = plt.colorbar(scatter, ax=ax, pad=0.1)
-        cbar.set_label(f'{z_col}')
-
-        ax.set_title(f'{x_col} vs {y_col} (Color: {z_col})')
-        ax.set_xlabel(x_col)
-        ax.set_ylabel(y_col)
-
-    else:
-        # Regular 2D plot
-        ax = fig.add_subplot(111)
-
-        if plot_type == 'scatter':
-            ax.scatter(x, y, c='b', s=10)
-        elif plot_type == 'line':
-            ax.plot(x, y)
-
-        # Add trendline if requested
-        if trendline == 'linear':
-            # Perform linear regression
-            slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
-            ax.plot(x, slope * x + intercept, color='red', label='Linear Trendline')
-
-            # Add the equation and R-squared value to the plot
-            equation_text = f'y = {slope:.3f}x + {intercept:.3f}\nR² = {r_value**2:.3f}'
-            ax.text(0.05, 0.95, equation_text, transform=ax.transAxes, fontsize=12, verticalalignment='top')
-
-
-        elif trendline == 'polynomial':
-
-            try:
-
-                # Perform polynomial regression using np.polyfit
-
-                coefficients = np.polyfit(x, y, degree)
-
-                p = np.poly1d(coefficients)
-
-                y_fit = p(x)
-
-                ax.plot(x, y_fit, color='red', label=f'Polynomial Trendline (degree {degree})')
-
-                # Calculate R-squared value for polynomial regression
-
-                residuals = y - y_fit
-
-                ss_res = np.sum(residuals ** 2)
-
-                ss_tot = np.sum((y - np.mean(y)) ** 2)
-
-                r_squared = 1 - (ss_res / ss_tot)
-
-                # Add the polynomial equation and R-squared value to the plot
-
-                poly_eq = " + ".join([f"{coefficients[i]:.3f}x^{degree - i}" for i in range(len(coefficients))])
-
-                equation_text = f'y = {poly_eq}\nR² = {r_squared:.3f}'
-
-                ax.text(0.05, 0.95, equation_text, transform=ax.transAxes, fontsize=12, verticalalignment='top')
-
-
-            except np.linalg.LinAlgError as e:
-
-                print(f"Error fitting polynomial trendline: {e}")
-
-        ax.set_title(f'{x_col} vs {y_col}')
-        ax.set_xlabel(x_col)
-        ax.set_ylabel(y_col)
-
-    # Check if a label exists for the legend, and add it
-    if ax.get_legend_handles_labels()[1]:  # Check if there are labels
-        ax.legend()
-
-    plt.show()
 
 def plot_window(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=None, degree=1, plot_z_as='heatmap'):
     """

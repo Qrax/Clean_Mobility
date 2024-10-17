@@ -47,7 +47,7 @@ def KolomNamenJuistZetten(dataframe,debug=False):
         print(len(kolomnamen))
         for i in range(len(kolomnamen)):
             print(i+1,kolomnamen[i])
-    dataframe.columns = kolomnamen[0:-1]
+    dataframe.columns = kolomnamen[0:43]
     return dataframe
 
 def DataInladen(directory_data,debug=False):
@@ -64,7 +64,32 @@ def DataInladen(directory_data,debug=False):
     df = KolomNamenJuistZetten(df,debug)
     return df
 
+def KolomNamenJuistZettenMotorDriver(dataframe,debug=False):
+    if debug:
+        print(dataframe.iloc[0,2])
+        print(dataframe.head())
+    kolomnamen = KolomnamenDataBase(dataframe.iloc[0,2])
+    if debug:
+        print(kolomnamen)
+        print(len(kolomnamen))
+        for i in range(len(kolomnamen)):
+            print(i+1,kolomnamen[i])
+    dataframe.columns = kolomnamen
+    return dataframe
 
+def DataInladenMotorDriver(directory_data,debug=False):
+    # Data inladen direct als DataFrame en kolomnamen aanpassen
+    df = pd.read_csv(
+    directory_data,
+    delimiter=',',
+    encoding='latin1',
+    comment="#",
+    on_bad_lines='skip',
+    low_memory = False
+
+    )
+    df = KolomNamenJuistZettenMotorDriver(df,debug)
+    return df
 # Update the function to use the correct time columns based on the observed data
 def resample_and_merge(df1_n, df2_n, freq='1S', time_column_df1='Dataloggertijd, in s',
                        time_column_df2='Dataloggertijd, in s'):

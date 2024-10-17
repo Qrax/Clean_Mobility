@@ -47,7 +47,7 @@ def KolomNamenJuistZetten(dataframe,debug=False):
         print(len(kolomnamen))
         for i in range(len(kolomnamen)):
             print(i+1,kolomnamen[i])
-    dataframe.columns = kolomnamen[0:43]
+    dataframe.columns = kolomnamen[:-1]
     return dataframe
 
 def DataInladen(directory_data,debug=False):
@@ -61,7 +61,7 @@ def DataInladen(directory_data,debug=False):
     low_memory = False
 
     )
-    df = KolomNamenJuistZetten(df,debug)
+    df = KolomNamenJuistZetten(df[:43],debug)
     return df
 
 def KolomNamenJuistZettenMotorDriver(dataframe,debug=False):

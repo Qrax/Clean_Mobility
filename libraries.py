@@ -58,7 +58,8 @@ def DataInladen(directory_data,debug=False):
     encoding='latin1',
     comment="#",
     on_bad_lines='skip',
-    low_memory = True
+    low_memory = False
+
     )
     df = KolomNamenJuistZetten(df,debug)
     return df

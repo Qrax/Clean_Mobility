@@ -37,10 +37,43 @@ def KolomnamenDataBase(format_header, bestandsnaam='column_namen_referentie_best
     kolomnamen = [kolom.strip() for kolom in kolomnamen_str.split(';')]
     return kolomnamen
 
+
+def KolomNamenJuistZettenFCC(dataframe, debug=False):
+    if debug:
+        print(dataframe.iloc[0, 2])
+        print(dataframe.head())
+
+    kolomnamen = KolomnamenDataBase(dataframe.iloc[0, 2])
+    if debug:
+        print(kolomnamen)
+        print(len(kolomnamen))
+        for i in range(len(kolomnamen)):
+            print(i + 1, kolomnamen[i])
+    dataframe.columns = kolomnamen[:-1]
+    return dataframe
+
+
+def DataInladenFCC(directory_data, debug=False):
+    # Data inladen direct als DataFrame en kolomnamen aanpassen
+    df = pd.read_csv(
+        directory_data,
+        delimiter=',',
+        encoding='latin1',
+        comment="#",
+        on_bad_lines='skip',
+        low_memory=False
+
+    )
+
+    df = KolomNamenJuistZettenFCC(df.iloc[:, :-38], debug)
+    return df
+
+
 def KolomNamenJuistZetten(dataframe,debug=False):
     if debug:
         print(dataframe.iloc[0,2])
         print(dataframe.head())
+
     kolomnamen = KolomnamenDataBase(dataframe.iloc[0,2])
     if debug:
         print(kolomnamen)
@@ -61,7 +94,9 @@ def DataInladen(directory_data,debug=False):
     low_memory = False
 
     )
-    df = KolomNamenJuistZetten(df[:43],debug)
+
+
+    df = KolomNamenJuistZetten(df,debug)
     return df
 
 def KolomNamenJuistZettenMotorDriver(dataframe,debug=False):

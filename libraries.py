@@ -95,7 +95,6 @@ def DataInladen(directory_data,debug=False):
 
     )
 
-
     df = KolomNamenJuistZetten(df,debug)
     return df
 

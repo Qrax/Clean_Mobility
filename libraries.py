@@ -115,7 +115,7 @@ def resample_and_merge(df1_n, df2_n, freq='1S', time_column_df1='Dataloggertijd,
 
     return merged_df
 
-def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=None, degree=1, plot_z_as='heatmap'):
+def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=None, degree=1, plot_z_as='heatmap', trendline_offset=0):
     """
     Plots the data based on the provided x, y, and optional z axis columns. Supports 2D and 3D plotting.
 
@@ -128,6 +128,7 @@ def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=Non
     - trendline: Type of trendline ('linear', 'polynomial'). Default is None.
     - degree: Degree of the polynomial trendline (if applicable). Default is 1.
     - plot_z_as: How to handle the Z-axis if it's provided ('3d' for a 3D plot, 'heatmap' for a 2D scatter with heatmap). Default is 'heatmap'.
+    - trendline_offset: X-value at which the trendline should start (nulpunt). Default is 0.
     """
     # Extract data and remove NaN/Inf values
     x = pd.to_numeric(data[x_col], errors='coerce').values
@@ -192,19 +193,19 @@ def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=Non
         if trendline == 'linear':
             # Perform linear regression
             slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
-            y_fit = slope * x + intercept
+            y_fit = slope * (x - trendline_offset) + intercept
             ax.plot(x, y_fit, color='red', label='Linear Trendline')
 
             # Add the equation and R-squared value to the plot
-            equation_text = f'y = {slope:.3f}x + {intercept:.3f}\nR² = {r_value**2:.3f}'
+            equation_text = f'y = {slope:.3f}(x - {trendline_offset}) + {intercept:.3f}\nR² = {r_value**2:.3f}'
             ax.text(0.05, 0.95, equation_text, transform=ax.transAxes, fontsize=12, verticalalignment='top')
 
         elif trendline == 'polynomial':
             try:
                 # Perform polynomial regression using np.polyfit
-                coefficients = np.polyfit(x, y, degree)
+                coefficients = np.polyfit(x - trendline_offset, y, degree)
                 p = np.poly1d(coefficients)
-                y_fit = p(x)
+                y_fit = p(x - trendline_offset)
                 ax.plot(x, y_fit, color='red', label=f'Polynomial Trendline (degree {degree})')
 
                 # Calculate R-squared value for polynomial regression
@@ -230,6 +231,7 @@ def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=Non
         ax.legend()
 
     plt.show()
+
 
 
 def plot_window(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=None, degree=1, plot_z_as='heatmap'):
@@ -318,11 +320,12 @@ from ipywidgets import widgets
 from IPython.display import display
 
 # Aangepaste resample_and_merge functie om meerdere dataframes te kunnen verwerken
-def resample_and_merge_multiple(dfs, freq='1S', time_column='Dataloggertijd, in s'):
+def resample_and_merge_multiple(dfs, freq='1S', time_column='Dataloggertijd, in s', ):
     resampled_dfs = []
 
     for df in dfs:
         df = df.copy()
+        status_label.value = f"Resampling and merging {df.iloc[0,2]}..."
         # Convert the time column to numeric format
         df['Indextijd'] = pd.to_numeric(df[time_column], errors='coerce')
         # Drop rows with NaN in the time column
@@ -344,10 +347,30 @@ def resample_and_merge_multiple(dfs, freq='1S', time_column='Dataloggertijd, in 
         resampled_dfs.append(df_resampled)
     # Merge all dataframes on the index
     from functools import reduce
-    merged_df = reduce(lambda left, right: pd.merge(left, right, left_index=True, right_index=True, how='outer'), resampled_dfs)
-    return merged_df
 
-def DataUitzoekenGui(directory,freq='1S'):
+    def add_number_to_columns(df, df_number):
+        # Voeg het nummer en een laag streepje toe aan elke kolomnaam
+        df.columns = [f'{df_number}_{col}' for col in df.columns]
+        return df
+
+    # Voeg een nummer toe aan de kolommen van elk dataframe in resampled_dfs
+    resampled_dfs = [add_number_to_columns(df, i + 1) for i, df in enumerate(resampled_dfs)]
+
+    # Probeer opnieuw samen te voegen
+    try:
+        status_label.value = "Reducing dataframes..."
+
+        merged_df = reduce(lambda left, right: pd.merge(left, right, left_index=True, right_index=True, how='outer'),
+                           resampled_dfs)
+
+        status_label.value = "Dataframes succesvol samengevoegd."
+        return merged_df
+    except Exception as e:
+        status_label.value = f"Error bij het samenvoegen: {str(e)}"
+        return None
+
+
+def DataUitzoekenGui(directory,freq='1S',debug=False):
     # Haal de lijst van bestanden op in de directory (optioneel filteren op .csv bestanden)
     files_in_directory = [f for f in os.listdir(directory) if f.endswith('.csv')]
 
@@ -359,6 +382,7 @@ def DataUitzoekenGui(directory,freq='1S'):
     )
 
     # Label om statusberichten te tonen
+    global status_label
     status_label = widgets.Label(value='')
 
     # Hier definiëren we een mutable object om de returnwaarde op te slaan
@@ -375,20 +399,21 @@ def DataUitzoekenGui(directory,freq='1S'):
         dataframes = []
         for file_name in selected_files:
             file_path = os.path.join(directory, file_name)
-            data = DataInladen(file_path, debug=False)
+            data = DataInladen(file_path, debug=debug)
             dataframes.append(data)
             status_label.value = f'{file_name} is geladen.'
 
         # Merge de dataframes
         status_label.value = f'Merging dataframes'
         merged_df = resample_and_merge_multiple(dataframes,freq=freq)
-        print("Alle dataframes zijn samengevoegd.")
 
         # Sla het samengevoegde dataframe op in het result dict
         result['merged_df'] = merged_df
-
-        status_label.value = 'Bestanden geladen en samengevoegd.'
-        return
+        if merged_df == None:
+            return
+        else:
+            status_label.value = 'Bestanden geladen en samengevoegd.'
+            return
 
     # Knop om de bestanden te laden
     load_button = widgets.Button(

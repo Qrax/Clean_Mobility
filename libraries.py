@@ -677,6 +677,134 @@ def calculate_total_energy_MPPTS(data):
     return data
 
 
+import folium
+import numpy as np
+import matplotlib.colors as mcolors
+import matplotlib.cm as cm
+
+
+def plot_trajectory_map(latitude, longitude, heatmap_values=None, colormap='cool', downsample=10):
+    """
+    Plots a trajectory on a Folium map using latitude and longitude data.
+    Optionally, applies a heatmap based on a third axis (e.g., speed) to color the trajectory.
+
+    Latitude and longitude are expected to be in Degrees and Decimal Minutes (DMM) format,
+    and the function will convert them to Decimal Degrees (DD).
+
+    If a third axis (heatmap_values) is provided, a color bar will be added to the map.
+
+    Parameters:
+    - latitude (pd.Series or list): Series or list of latitude values in DMM format.
+    - longitude (pd.Series or list): Series or list of longitude values in DMM format.
+    - heatmap_values (pd.Series or list, optional): Optional values for a heatmap (e.g., speed). Default is None.
+    - colormap (str): Colormap to use for the heatmap. Default is 'cool'.
+    - downsample (int): Factor for downsampling the data to improve performance. Default is 10.
+
+    Returns:
+    - folium.Map: A Folium map object with the trajectory plotted.
+    """
+
+    # Function to convert Degrees and Decimal Minutes (DMM) to Decimal Degrees (DD)
+    def dmm_to_dd(dmm):
+        dmm = float(dmm)
+        degrees = int(dmm // 100)
+        minutes = dmm % 100
+        return degrees + (minutes / 60)
+
+    # Ensure that latitude and longitude are the same length
+    if len(latitude) != len(longitude):
+        raise ValueError("Latitude and Longitude must have the same length.")
+
+    # Convert latitude and longitude from DMM to DD format
+    latitude_dd = [dmm_to_dd(lat) for lat in latitude]
+    longitude_dd = [dmm_to_dd(lon) for lon in longitude]
+
+    # Downsample the data if necessary
+    if downsample > 1:
+        latitude_dd = latitude_dd[::downsample]
+        longitude_dd = longitude_dd[::downsample]
+        if heatmap_values is not None:
+            heatmap_values = heatmap_values[::downsample]
+
+    # Normalize heatmap values if they exist
+    norm = None
+    cmap = None
+    if heatmap_values is not None:
+        norm = mcolors.Normalize(vmin=min(heatmap_values), vmax=max(heatmap_values))
+        cmap = cm.get_cmap(colormap)  # Use cm.get_cmap() for the colormap
+
+    # Create the base map, centering on the mean latitude and longitude
+    world_map = folium.Map(location=[np.mean(latitude_dd), np.mean(longitude_dd)], zoom_start=6)
+
+    # Add colored segments to the map
+    coordinates = list(
+        zip(latitude_dd, longitude_dd, heatmap_values if heatmap_values is not None else [None] * len(latitude_dd)))
+
+    for i in range(len(coordinates) - 1):
+        start = coordinates[i]
+        end = coordinates[i + 1]
+
+        # If heatmap values are provided, apply the colormap
+        if heatmap_values is not None:
+            color = mcolors.to_hex(cmap(norm(start[2])))  # Use heatmap value to color
+        else:
+            color = '#3388ff'  # Default blue for no heatmap
+
+        # Add the polyline for this segment with the calculated color
+        folium.PolyLine(locations=[[start[0], start[1]], [end[0], end[1]]],
+                        color=color, weight=2.5, opacity=1).add_to(world_map)
+
+    # Fit the map to the bounds of the data
+    world_map.fit_bounds([[min(latitude_dd), min(longitude_dd)], [max(latitude_dd), max(longitude_dd)]])
+
+    # If a heatmap column was provided, add a color bar (legend)
+    if heatmap_values is not None:
+        # Get the min and max values
+        vmin, vmax = min(heatmap_values), max(heatmap_values)
+
+        # Generate the color gradient for the full height of the map
+        gradient = [mcolors.to_hex(cmap(norm(vmin + i * (vmax - vmin) / 10))) for i in range(10)]
+
+        # Function to generate HTML for color bar with full map height
+        def generate_color_bar_html(colormap, vmin, vmax, num_ticks=10):
+            # Generate color gradient
+            gradient = [mcolors.to_hex(colormap(norm(vmin + i * (vmax - vmin) / (num_ticks - 1)))) for i in
+                        range(num_ticks)]
+
+            # Make the gradient stretch the full height of the map container
+            gradient_html = ''.join(
+                [f'<div style="background-color:{color};height:calc(100% / {num_ticks});"></div>' for color in
+                 gradient])
+
+            # Generate labels for the color bar, aligning them to the middle of each gradient section
+            labels_html = ''.join([
+                                      f'<div style="font-size:14px; height:calc(100% / {num_ticks});">{vmin + i * (vmax - vmin) / (num_ticks - 1):.1f}</div>'
+                                      for i in range(num_ticks)])
+
+            return f'''
+            <div style="position: fixed; bottom: 50px; left: 50px; z-index:9999; width: 150px; height: 90%;">
+                <b>Speed (km/h)</b>
+                <div style="background-color:white; border:1px solid black; padding:5px; height:100%;">
+                    <div style="display:flex; height:100%;">
+                        <div style="height:100%; width:30px; display:flex; flex-direction:column; justify-content:space-between;">
+                            {gradient_html}
+                        </div>
+                        <div style="margin-left:10px; display:flex; flex-direction:column; justify-content:space-between;">
+                            {labels_html}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            '''
+
+        # Generate the color bar
+        color_bar_html = generate_color_bar_html(cmap, vmin, vmax)
+
+        # Add the color bar to the map
+        world_map.get_root().html.add_child(folium.Element(color_bar_html))
+
+    return world_map
+
 
 
 

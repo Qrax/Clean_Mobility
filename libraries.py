@@ -115,9 +115,7 @@ def resample_and_merge(df1_n, df2_n, freq='1S', time_column_df1='Dataloggertijd,
 
     return merged_df
 
-
-
-def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=None, degree=1, plot_z_as='heatmap'):
+def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=None, degree=1, plot_z_as='heatmap', trendline_offset=0):
     """
     Plots the data based on the provided x, y, and optional z axis columns. Supports 2D and 3D plotting.
 
@@ -130,6 +128,7 @@ def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=Non
     - trendline: Type of trendline ('linear', 'polynomial'). Default is None.
     - degree: Degree of the polynomial trendline (if applicable). Default is 1.
     - plot_z_as: How to handle the Z-axis if it's provided ('3d' for a 3D plot, 'heatmap' for a 2D scatter with heatmap). Default is 'heatmap'.
+    - trendline_offset: X-value at which the trendline should start (nulpunt). Default is 0.
     """
     # Extract data and remove NaN/Inf values
     x = pd.to_numeric(data[x_col], errors='coerce').values
@@ -137,12 +136,19 @@ def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=Non
     mask = np.isfinite(x) & np.isfinite(y)
 
     if z_col is not None:
-        z = data[z_col].values
+        z = pd.to_numeric(data[z_col], errors='coerce').values
         mask &= np.isfinite(z)
         z = z[mask]
 
     x = x[mask]
     y = y[mask]
+
+    # Sort the data for proper trendline plotting
+    sorted_indices = np.argsort(x)
+    x = x[sorted_indices]
+    y = y[sorted_indices]
+    if z_col is not None:
+        z = z[sorted_indices]
 
     fig = plt.figure(figsize=(8, 8))
 
@@ -187,17 +193,19 @@ def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=Non
         if trendline == 'linear':
             # Perform linear regression
             slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
-            ax.plot(x, slope * x + intercept, color='red', label='Linear Trendline')
+            y_fit = slope * (x - trendline_offset) + intercept
+            ax.plot(x, y_fit, color='red', label='Linear Trendline')
 
             # Add the equation and R-squared value to the plot
-            equation_text = f'y = {slope:.3f}x + {intercept:.3f}\nR² = {r_value**2:.3f}'
+            equation_text = f'y = {slope:.3f}(x - {trendline_offset}) + {intercept:.3f}\nR² = {r_value**2:.3f}'
             ax.text(0.05, 0.95, equation_text, transform=ax.transAxes, fontsize=12, verticalalignment='top')
 
         elif trendline == 'polynomial':
             try:
-                # Perform polynomial regression
-                p = Polynomial.fit(x, y, degree)
-                y_fit = p(x)
+                # Perform polynomial regression using np.polyfit
+                coefficients = np.polyfit(x - trendline_offset, y, degree)
+                p = np.poly1d(coefficients)
+                y_fit = p(x - trendline_offset)
                 ax.plot(x, y_fit, color='red', label=f'Polynomial Trendline (degree {degree})')
 
                 # Calculate R-squared value for polynomial regression
@@ -207,8 +215,7 @@ def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=Non
                 r_squared = 1 - (ss_res / ss_tot)
 
                 # Add the polynomial equation and R-squared value to the plot
-                coef = p.convert().coef  # Get the polynomial coefficients in standard form
-                poly_eq = " + ".join([f"{coef[i]:.3f}x^{i}" if i > 0 else f"{coef[i]:.3f}" for i in range(len(coef))])
+                poly_eq = " + ".join([f"{coefficients[i]:.3f}x^{degree - i}" for i in range(len(coefficients))])
                 equation_text = f'y = {poly_eq}\nR² = {r_squared:.3f}'
                 ax.text(0.05, 0.95, equation_text, transform=ax.transAxes, fontsize=12, verticalalignment='top')
 
@@ -224,6 +231,7 @@ def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=Non
         ax.legend()
 
     plt.show()
+
 
 def plot_window(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=None, degree=1, plot_z_as='heatmap'):
     """
@@ -316,6 +324,7 @@ def resample_and_merge_multiple(dfs, freq='1S', time_column='Dataloggertijd, in 
 
     for df in dfs:
         df = df.copy()
+        status_label.value = f"Resampling and merging {df.iloc[0,2]}..."
         # Convert the time column to numeric format
         df['Indextijd'] = pd.to_numeric(df[time_column], errors='coerce')
         # Drop rows with NaN in the time column
@@ -337,10 +346,30 @@ def resample_and_merge_multiple(dfs, freq='1S', time_column='Dataloggertijd, in 
         resampled_dfs.append(df_resampled)
     # Merge all dataframes on the index
     from functools import reduce
-    merged_df = reduce(lambda left, right: pd.merge(left, right, left_index=True, right_index=True, how='outer'), resampled_dfs)
-    return merged_df
 
-def DataUitzoekenGui(directory,freq='1S'):
+    def add_number_to_columns(df, df_number):
+        # Voeg het nummer en een laag streepje toe aan elke kolomnaam
+        df.columns = [f'{df_number}_{col}' for col in df.columns]
+        return df
+
+    # Voeg een nummer toe aan de kolommen van elk dataframe in resampled_dfs
+    resampled_dfs = [add_number_to_columns(df, i + 1) for i, df in enumerate(resampled_dfs)]
+
+    # Probeer opnieuw samen te voegen
+    try:
+        status_label.value = "Reducing dataframes..."
+
+        merged_df = reduce(lambda left, right: pd.merge(left, right, left_index=True, right_index=True, how='outer'),
+                           resampled_dfs)
+
+        status_label.value = "Dataframes succesvol samengevoegd."
+        return merged_df
+    except Exception as e:
+        status_label.value = f"Error bij het samenvoegen: {str(e)}"
+        return None
+
+
+def DataUitzoekenGui(directory,freq='1S',debug=False):
     # Haal de lijst van bestanden op in de directory (optioneel filteren op .csv bestanden)
     files_in_directory = [f for f in os.listdir(directory) if f.endswith('.csv')]
 
@@ -352,6 +381,7 @@ def DataUitzoekenGui(directory,freq='1S'):
     )
 
     # Label om statusberichten te tonen
+    global status_label
     status_label = widgets.Label(value='')
 
     # Hier definiëren we een mutable object om de returnwaarde op te slaan
@@ -368,20 +398,21 @@ def DataUitzoekenGui(directory,freq='1S'):
         dataframes = []
         for file_name in selected_files:
             file_path = os.path.join(directory, file_name)
-            data = DataInladen(file_path, debug=False)
+            data = DataInladen(file_path, debug=debug)
             dataframes.append(data)
             status_label.value = f'{file_name} is geladen.'
 
         # Merge de dataframes
         status_label.value = f'Merging dataframes'
         merged_df = resample_and_merge_multiple(dataframes,freq=freq)
-        print("Alle dataframes zijn samengevoegd.")
 
         # Sla het samengevoegde dataframe op in het result dict
         result['merged_df'] = merged_df
-
-        status_label.value = 'Bestanden geladen en samengevoegd.'
-        return
+        if merged_df == None:
+            return
+        else:
+            status_label.value = 'Bestanden geladen en samengevoegd.'
+            return
 
     # Knop om de bestanden te laden
     load_button = widgets.Button(
@@ -669,6 +700,134 @@ def calculate_total_energy_MPPTS(data):
     data['Total Solar Energy (J)'] = data[energy_columns].sum(axis=1).clip(lower=0)  # Ensure no negative energy values
     return data
 
+
+import folium
+import numpy as np
+import matplotlib.colors as mcolors
+import matplotlib.cm as cm
+
+
+def plot_trajectory_map(latitude, longitude, heatmap_values=None, colormap='cool', downsample=10):
+    """
+    Plots a trajectory on a Folium map using latitude and longitude data.
+    Optionally, applies a heatmap based on a third axis (e.g., speed) to color the trajectory.
+
+    Latitude and longitude are expected to be in Degrees and Decimal Minutes (DMM) format,
+    and the function will convert them to Decimal Degrees (DD).
+
+    If a third axis (heatmap_values) is provided, a color bar will be added to the map.
+
+    Parameters:
+    - latitude (pd.Series or list): Series or list of latitude values in DMM format.
+    - longitude (pd.Series or list): Series or list of longitude values in DMM format.
+    - heatmap_values (pd.Series or list, optional): Optional values for a heatmap (e.g., speed). Default is None.
+    - colormap (str): Colormap to use for the heatmap. Default is 'cool'.
+    - downsample (int): Factor for downsampling the data to improve performance. Default is 10.
+
+    Returns:
+    - folium.Map: A Folium map object with the trajectory plotted.
+    """
+
+    # Function to convert Degrees and Decimal Minutes (DMM) to Decimal Degrees (DD)
+    def dmm_to_dd(dmm):
+        dmm = float(dmm)
+        degrees = int(dmm // 100)
+        minutes = dmm % 100
+        return degrees + (minutes / 60)
+
+    # Ensure that latitude and longitude are the same length
+    if len(latitude) != len(longitude):
+        raise ValueError("Latitude and Longitude must have the same length.")
+
+    # Convert latitude and longitude from DMM to DD format
+    latitude_dd = [dmm_to_dd(lat) for lat in latitude]
+    longitude_dd = [dmm_to_dd(lon) for lon in longitude]
+
+    # Downsample the data if necessary
+    if downsample > 1:
+        latitude_dd = latitude_dd[::downsample]
+        longitude_dd = longitude_dd[::downsample]
+        if heatmap_values is not None:
+            heatmap_values = heatmap_values[::downsample]
+
+    # Normalize heatmap values if they exist
+    norm = None
+    cmap = None
+    if heatmap_values is not None:
+        norm = mcolors.Normalize(vmin=min(heatmap_values), vmax=max(heatmap_values))
+        cmap = cm.get_cmap(colormap)  # Use cm.get_cmap() for the colormap
+
+    # Create the base map, centering on the mean latitude and longitude
+    world_map = folium.Map(location=[np.mean(latitude_dd), np.mean(longitude_dd)], zoom_start=6)
+
+    # Add colored segments to the map
+    coordinates = list(
+        zip(latitude_dd, longitude_dd, heatmap_values if heatmap_values is not None else [None] * len(latitude_dd)))
+
+    for i in range(len(coordinates) - 1):
+        start = coordinates[i]
+        end = coordinates[i + 1]
+
+        # If heatmap values are provided, apply the colormap
+        if heatmap_values is not None:
+            color = mcolors.to_hex(cmap(norm(start[2])))  # Use heatmap value to color
+        else:
+            color = '#3388ff'  # Default blue for no heatmap
+
+        # Add the polyline for this segment with the calculated color
+        folium.PolyLine(locations=[[start[0], start[1]], [end[0], end[1]]],
+                        color=color, weight=2.5, opacity=1).add_to(world_map)
+
+    # Fit the map to the bounds of the data
+    world_map.fit_bounds([[min(latitude_dd), min(longitude_dd)], [max(latitude_dd), max(longitude_dd)]])
+
+    # If a heatmap column was provided, add a color bar (legend)
+    if heatmap_values is not None:
+        # Get the min and max values
+        vmin, vmax = min(heatmap_values), max(heatmap_values)
+
+        # Generate the color gradient for the full height of the map
+        gradient = [mcolors.to_hex(cmap(norm(vmin + i * (vmax - vmin) / 10))) for i in range(10)]
+
+        # Function to generate HTML for color bar with full map height
+        def generate_color_bar_html(colormap, vmin, vmax, num_ticks=10):
+            # Generate color gradient
+            gradient = [mcolors.to_hex(colormap(norm(vmin + i * (vmax - vmin) / (num_ticks - 1)))) for i in
+                        range(num_ticks)]
+
+            # Make the gradient stretch the full height of the map container
+            gradient_html = ''.join(
+                [f'<div style="background-color:{color};height:calc(100% / {num_ticks});"></div>' for color in
+                 gradient])
+
+            # Generate labels for the color bar, aligning them to the middle of each gradient section
+            labels_html = ''.join([
+                                      f'<div style="font-size:14px; height:calc(100% / {num_ticks});">{vmin + i * (vmax - vmin) / (num_ticks - 1):.1f}</div>'
+                                      for i in range(num_ticks)])
+
+            return f'''
+            <div style="position: fixed; bottom: 50px; left: 50px; z-index:9999; width: 150px; height: 90%;">
+                <b>Speed (km/h)</b>
+                <div style="background-color:white; border:1px solid black; padding:5px; height:100%;">
+                    <div style="display:flex; height:100%;">
+                        <div style="height:100%; width:30px; display:flex; flex-direction:column; justify-content:space-between;">
+                            {gradient_html}
+                        </div>
+                        <div style="margin-left:10px; display:flex; flex-direction:column; justify-content:space-between;">
+                            {labels_html}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            '''
+
+        # Generate the color bar
+        color_bar_html = generate_color_bar_html(cmap, vmin, vmax)
+
+        # Add the color bar to the map
+        world_map.get_root().html.add_child(folium.Element(color_bar_html))
+
+    return world_map
 
 
 

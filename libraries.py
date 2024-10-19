@@ -233,6 +233,7 @@ def plot_data(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=Non
     plt.show()
 
 
+
 def plot_window(data, x_col, y_col, z_col=None, plot_type='scatter', trendline=None, degree=1, plot_z_as='heatmap'):
     """
     Plots the data based on the provided x, y, and optional z axis columns. Supports 2D and 3D plotting.
@@ -319,7 +320,7 @@ from ipywidgets import widgets
 from IPython.display import display
 
 # Aangepaste resample_and_merge functie om meerdere dataframes te kunnen verwerken
-def resample_and_merge_multiple(dfs, freq='1S', time_column='Dataloggertijd, in s'):
+def resample_and_merge_multiple(dfs, freq='1S', time_column='Dataloggertijd, in s', ):
     resampled_dfs = []
 
     for df in dfs:

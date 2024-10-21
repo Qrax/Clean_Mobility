@@ -740,6 +740,36 @@ def Get_directory(base_directory):
     display(voertuig_dropdown, jaartal_dropdown, situatie_dropdown, dataset_dropdown, confirm_button, output)
 
 
+def delta_rondje_berekenen(rijen, dataset, column_naam):
+    delta_per_rondje = np.array([])
+    for w in range(len(rijen) - 1):
+        delta_vermogen = (dataset[column_naam].iloc[int(rijen[w + 1])] -
+                          dataset[column_naam].iloc[int(rijen[w])])
+        delta_per_rondje = np.append(delta_per_rondje, delta_vermogen)
+    return delta_per_rondje
+
+
+def optellen_rondje(rijen, dataset, column_naam):
+    vermogen_per_rondje = np.array([])
+
+    for r in range(len(rijen) - 1):
+        start = int(rijen[r])
+        eind = int(rijen[r + 1])
+        vermogen = dataset[column_naam].iloc[start:eind].sum()
+        vermogen_per_rondje = np.append(vermogen_per_rondje, vermogen)
+    return vermogen_per_rondje
+
+
+def gemiddelde_rondje(rijen, dataset, column_naam):
+    gemiddelde_per_rondje = np.array([])
+
+    for i in range(len(rijen) - 1):
+        start = int(rijen[i])
+        eind = int(rijen[i + 1])
+
+        gemiddelde = dataset[column_naam].iloc[start:eind].mean()
+        gemiddelde_per_rondje = np.append(gemiddelde_per_rondje, gemiddelde)
+    return gemiddelde_per_rondje
 
 
 

@@ -777,7 +777,7 @@ def plot_trajectory_map(latitude, longitude, heatmap_values=None, colormap='cool
 
         # Add the polyline for this segment with the calculated color
         folium.PolyLine(locations=[[start[0], start[1]], [end[0], end[1]]],
-                        color=color, weight=2.5, opacity=1).add_to(world_map)
+                        color=color, weight=7.5, opacity=1).add_to(world_map)
 
     # Fit the map to the bounds of the data
     world_map.fit_bounds([[min(latitude_dd), min(longitude_dd)], [max(latitude_dd), max(longitude_dd)]])

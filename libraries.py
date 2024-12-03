@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import os
 import copy
+import math
 from math import sqrt,ceil
 from scipy.stats import linregress
 from mpl_toolkits.mplot3d import Axes3D
@@ -772,6 +773,232 @@ def gemiddelde_rondje(rijen, dataset, column_naam):
     return gemiddelde_per_rondje
 
 
+# Lees de GPS data in
+
+# Helper function to convert NMEA latitude/longitude to decimal degrees
+def convert_to_decimal_degrees(value, direction):
+    degrees = int(value) // 100
+    minutes = value - (degrees * 100)
+    decimal = degrees + (minutes / 60)
+
+    if direction in ['S', 'W']:
+        decimal = -decimal
+
+    return decimal
+
+
+# Function to read GPS data from a text file and convert to a DataFrame
+def lees_gps_data(filepath):
+    """Read GPS data from a text file and convert to a DataFrame."""
+    timestamps = []
+    latitudes = []
+    lat_directions = []
+    longitudes = []
+    lon_directions = []
+    hoogtes = []
+    speeds = []
+
+    with open(filepath, 'r') as file:
+        for regel in file:
+            parts = regel.split(',')
+            if regel.startswith('$GPRMC'):
+                # Extract time and speed from GPRMC sentence
+                if len(parts) > 7:
+                    timestamp = parts[1]
+                    speed = parts[7]  # Speed in knots
+                    timestamps.append(timestamp)
+                    try:
+                        speed_kmh = (float(speed) * 1.852) / 3.6  # Convert knots to m/s
+                        speeds.append(speed_kmh)
+                    except ValueError:
+                        speeds.append(None)
+
+            elif regel.startswith('$GPGGA'):
+                # Extract latitude, longitude, and altitude from GPGGA sentence
+                if len(parts) > 9:
+                    latitude = parts[2]
+                    lat_direction = parts[3]
+                    longitude = parts[4]
+                    lon_direction = parts[5]
+                    altitude = parts[9]
+
+                    # Append raw values for conversion later
+                    try:
+                        latitude = float(latitude)
+                        latitudes.append(latitude)
+                        lat_directions.append(lat_direction)
+                    except ValueError:
+                        latitudes.append(None)
+                        lat_directions.append(None)
+
+                    try:
+                        longitude = float(longitude)
+                        longitudes.append(longitude)
+                        lon_directions.append(lon_direction)
+                    except ValueError:
+                        longitudes.append(None)
+                        lon_directions.append(None)
+
+                    # Convert altitude to float
+                    try:
+                        altitude = float(altitude)
+                        hoogtes.append(altitude)
+                    except ValueError:
+                        hoogtes.append(None)
+
+    # Check if all lists have the same length
+    max_length = max(len(timestamps), len(latitudes), len(longitudes), len(hoogtes), len(speeds))
+
+    # Make sure all lists have the same length by appending None to the shorter ones
+    timestamps.extend([None] * (max_length - len(timestamps)))
+    latitudes.extend([None] * (max_length - len(latitudes)))
+    lat_directions.extend([None] * (max_length - len(lat_directions)))
+    longitudes.extend([None] * (max_length - len(longitudes)))
+    lon_directions.extend([None] * (max_length - len(lon_directions)))
+    hoogtes.extend([None] * (max_length - len(hoogtes)))
+    speeds.extend([None] * (max_length - len(speeds)))
+
+    # Construct DataFrame
+    data = {
+        'timestamp': timestamps,
+        'latitude': latitudes,
+        'lat_direction': lat_directions,
+        'longitude': longitudes,
+        'lon_direction': lon_directions,
+        'hoogte': hoogtes,
+        'speed_m/s': speeds
+    }
+
+    df = pd.DataFrame(data)
+
+    # Filter out rows where latitude or longitude are missing
+    df = df.dropna(subset=['latitude', 'longitude']).reset_index(drop=True)
+
+    # Convert latitude and longitude columns to decimal degrees
+    df['latitude'] = df.apply(lambda row: convert_to_decimal_degrees(float(row['latitude']), row['lat_direction']),
+                              axis=1)
+    df['longitude'] = df.apply(lambda row: convert_to_decimal_degrees(float(row['longitude']), row['lon_direction']),
+                               axis=1)
+
+    return df
+
+
+# Functies voor het filter
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    return np.sqrt((lat2 - lat1) ** 2 + (lon2 - lon1) ** 2)
+
+
+def find_nearest_index(df, target_lon, target_lat):
+    distances = df.apply(lambda row: calculate_distance(row['latitude'], row['longitude'], target_lat, target_lon),
+                         axis=1)
+    return distances.idxmin()
+
+
+def filter_track_data(df, start_lon, start_lat, end_lon, end_lat):
+    start_index = find_nearest_index(df, start_lon, start_lat)
+    end_index = find_nearest_index(df, end_lon, end_lat)
+
+    # Zorg ervoor dat de start_index voor de end_index komt
+    if start_index > end_index:
+        start_index, end_index = end_index, start_index
+
+    return df.iloc[start_index:end_index + 1]
+
+
+# Jouw haversine functie
+def haversine(lat1, lon1, lat2, lon2, radius=6371000):  # Radius in meters
+    # Convert latitude and longitude from degrees to radians
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+
+    # Compute differences
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+
+    # Haversine formula
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    # Distance in meters
+    distance = radius * c
+    return distance
+
+
+# Omzetten van 'latitude' en 'longitude' naar correcte waarden (rekening houdend met N/S en E/W)
+def correct_coordinates(lat, lat_dir, lon, lon_dir):
+    if lat_dir == 'S':
+        lat = -lat
+    if lon_dir == 'W':
+        lon = -lon
+    return lat, lon
+
+# Omzetten van 'latitude' en 'longitude' naar correcte waarden (rekening houdend met N/S en E/W)
+def correct_coordinates(lat, lat_dir, lon, lon_dir):
+    if lat_dir == 'S':
+        lat = -lat
+    if lon_dir == 'W':
+        lon = -lon
+    return lat, lon
+
+
+# Functie om de afstand te berekenen tussen twee rijen in de DataFrame
+def calculate_distance_between_rows(df, row_index1, row_index2):
+    # Haal de coördinaten en richting op voor de twee rijen
+    lat1, lon1 = correct_coordinates(
+        df.loc[row_index1, 'latitude'], df.loc[row_index1, 'lat_direction'],
+        df.loc[row_index1, 'longitude'], df.loc[row_index1, 'lon_direction']
+    )
+    lat2, lon2 = correct_coordinates(
+        df.loc[row_index2, 'latitude'], df.loc[row_index2, 'lat_direction'],
+        df.loc[row_index2, 'longitude'], df.loc[row_index2, 'lon_direction']
+    )
+
+    # Bereken de afstand met de haversine functie
+    distance = haversine(lat1, lon1, lat2, lon2)
+    return distance
+
+# Functie om hoogteverschil te berekenen tussen twee rijen
+def calculate_height_difference(df, row_index1, row_index2):
+    hoogte1 = df.loc[row_index1, 'hoogte']
+    hoogte2 = df.loc[row_index2, 'hoogte']
+    return hoogte2 - hoogte1
+
+
+# Filter motordriver data van race begin tot race einde
+
+def filter_track_data_with_start_and_end(data_file_motordriver, start_row, end_row):
+    """
+    Filter de data handmatig vanaf een opgegeven startrij tot een opgegeven eindrij.
+
+    Parameters:
+        data_file_motordriver (DataFrame): Het originele DataFrame.
+        start_row (int): Het indexnummer van de rij waarmee het filteren moet beginnen.
+        end_row (int): Het indexnummer van de rij waarmee het filteren moet eindigen.
+
+    Returns:
+        DataFrame: Het gefilterde DataFrame vanaf start_row tot end_row.
+    """
+    # Zorg ervoor dat de start_row en end_row binnen de geldige indexrange vallen
+    if start_row < 0 or start_row >= len(data_file_motordriver):
+        raise ValueError("De opgegeven start-row valt buiten de geldige indexrange.")
+    if end_row < 0 or end_row >= len(data_file_motordriver):
+        raise ValueError("De opgegeven end-row valt buiten de geldige indexrange.")
+
+    # Controleer dat start_row kleiner of gelijk is aan end_row
+    if start_row > end_row:
+        raise ValueError("De start-row moet kleiner zijn dan of gelijk zijn aan de eind-row.")
+
+    # Filter het DataFrame tussen start_row en end_row
+    return data_file_motordriver.iloc[start_row:end_row + 1]
+
+# Functie om graden minuten naar decimale graden om te rekenen
+def convert_to_decimal_degrees2(value):
+    if pd.isna(value):
+        return None
+    degrees = int(value // 100)  # De gehele gradenwaarde
+    minutes = value % 100  # De minutenwaarde
+    decimal_degrees = degrees + (minutes / 60)
+    return decimal_degrees
 
 
 

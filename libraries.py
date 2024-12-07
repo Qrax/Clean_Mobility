@@ -991,16 +991,284 @@ def filter_track_data_with_start_and_end(data_file_motordriver, start_row, end_r
     # Filter het DataFrame tussen start_row en end_row
     return data_file_motordriver.iloc[start_row:end_row + 1]
 
-# Functie om graden minuten naar decimale graden om te rekenen
-def convert_to_decimal_degrees2(value):
-    if pd.isna(value):
-        return None
-    degrees = int(value // 100)  # De gehele gradenwaarde
-    minutes = value % 100  # De minutenwaarde
-    decimal_degrees = degrees + (minutes / 60)
-    return decimal_degrees
+# Definieer een functie voor een 2D-plot
+def plot_height_profile(latitudes, longitudes, hoogtes):
+    plt.figure(figsize=(10, 6))
+    scatter = plt.scatter(longitudes, latitudes, c=hoogtes, cmap='viridis', s=10, alpha=0.8)
+    plt.colorbar(scatter, label='Hoogte (m)')
+    plt.xlabel('Longitude')
+    plt.ylabel('Latitude')
+    plt.title('2D Hoogteprofiel')
+    plt.grid(True)
+    plt.show()
+
+def vind_rijen(df, lat_min1, lat_max1, lon_min1, lon_max1, lat_min2, lat_max2, lon_min2, lon_max2):
+    """
+    Identificeert de indices van rijen in de DataFrame die binnen twee opgegeven rechthoekige gebieden vallen.
+
+    Parameters:
+    df (DataFrame): De DataFrame met 'latitude' en 'longitude' kolommen.
+    lat_min1, lat_max1, lon_min1, lon_max1: Coördinaten van het eerste gebied.
+    lat_min2, lat_max2, lon_min2, lon_max2: Coördinaten van het tweede gebied.
+
+    Returns:
+    list: Lijst met indices van de rijen die binnen de opgegeven gebieden vallen.
+    """
+    gevonden = False
+    rechtestuk_rijen_hoogte = []
+
+    for i in range(len(df)):
+        lat = df['latitude'].iloc[i]
+        lon = df['longitude'].iloc[i]
+
+        if lat_min1 <= lat <= lat_max1 and lon_min1 <= lon <= lon_max1:
+            if not gevonden:
+                rechtestuk_rijen_hoogte.append(i)
+                gevonden = True
+
+        if gevonden and lat_min2 <= lat <= lat_max2 and lon_min2 <= lon <= lon_max2:
+            rechtestuk_rijen_hoogte.append(i)
+            gevonden = False
+
+    return rechtestuk_rijen_hoogte
 
 
+# Check of het is gelukt met de rechte stukken
+# Het is gelukt
 
 
+import matplotlib.pyplot as plt
 
+
+def plot_height_profile_with_boxes(latitudes, longitudes, hoogtes, lat_min1, lat_max1, lon_min1, lon_max1, lat_min2, lat_max2, lon_min2, lon_max2):
+    # Increase figure size by setting the figsize
+    fig, ax = plt.subplots(figsize=(12, 8))  # Adjust the width and height as needed
+    scatter = ax.scatter(longitudes, latitudes, c=hoogtes, cmap='viridis', marker='o')
+    ax.set_title('Hoogteprofiel van racebaan Nogaro', fontsize=16)
+    ax.set_xlabel('Longitude', fontsize=14)
+    ax.set_ylabel('Latitude', fontsize=14)
+
+    # Create the colorbar
+    cbar = fig.colorbar(scatter, ax=ax)
+    cbar.set_label('Hoogte boven zeeniveau (m)', fontsize=12)
+
+    # Plot the rectangular boundaries
+    plt.plot(
+        [lon_min1, lon_max1, lon_max1, lon_min1, lon_min1],
+        [lat_min1, lat_min1, lat_max1, lat_max1, lat_min1],
+        color='red', linestyle='--', linewidth=2, label="Boundary Square")
+
+    plt.plot(
+        [lon_min2, lon_max2, lon_max2, lon_min2, lon_min2],
+        [lat_min2, lat_min2, lat_max2, lat_max2, lat_min2],
+        color='red', linestyle='--', linewidth=2, label="Boundary Square")
+
+    for i in range(len(latitudes)):
+        lat = latitudes.iloc[i]
+        lon = longitudes.iloc[i]
+        # plt.text(lon, lat, str(i), fontsize=8, color='black')
+
+    # Enable grid
+    plt.grid(True)
+
+    # Show the plot
+    plt.show()
+
+def bereken_afstand_en_hoogteverschil(df, start_index, eind_index):
+    """
+    Selecteer een subset van de DataFrame op basis van het opgegeven indexbereik,
+    verwijder de kolom 'speed(m/s)', bereken de Haversine-afstand en het hoogteverschil
+    tussen opeenvolgende rijen, en voeg deze als nieuwe kolommen toe aan het subset.
+
+    Parameters:
+    df (DataFrame): De oorspronkelijke DataFrame met de kolommen 'latitude', 'longitude',
+                    'lat_direction', 'lon_direction', 'hoogte' en 'speed(m/s)'.
+    start_index (int): De startindex van de rijen die moeten worden verwerkt.
+    eind_index (int): De eindindex (inclusief) van de rijen die moeten worden verwerkt.
+
+    Returns:
+    DataFrame: Een subset van de oorspronkelijke DataFrame zonder de kolom 'speed(m/s)' en met
+               extra kolommen 'afstand', 'hoogteverschil', 'cumulatieve_afstand' en
+               'cumulatief_hoogteverschil'.
+    """
+    def haversine(lat1, lon1, lat2, lon2, radius=6371000):
+        # Converteer graden naar radialen
+        lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+        # Bereken verschillen
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        # Haversine-formule
+        a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return radius * c
+
+    def corrigeer_coordinaten(lat, lat_dir, lon, lon_dir):
+        if lat_dir == 'S':
+            lat = -lat
+        if lon_dir == 'W':
+            lon = -lon
+        return lat, lon
+
+    # Selecteer het subset van de DataFrame
+    subset_df = df.loc[start_index:eind_index].copy()
+
+    # Verwijder de kolom 'speed(m/s)' indien aanwezig
+    if 'speed_m/s' in subset_df.columns:
+        subset_df.drop(columns=['speed_m/s'], inplace=True)
+
+    # Initialiseer lijsten voor afstanden en hoogteverschillen
+    afstanden = [0]  # Eerste rij heeft geen vorige rij om afstand mee te berekenen
+    hoogteverschillen = [0]  # Eerste rij heeft geen vorige rij om hoogteverschil mee te berekenen
+
+    # Itereer over het subset om afstanden en hoogteverschillen te berekenen
+    for i in range(start_index, eind_index):
+        lat1, lon1 = corrigeer_coordinaten(
+            df.at[i, 'latitude'], df.at[i, 'lat_direction'],
+            df.at[i, 'longitude'], df.at[i, 'lon_direction']
+        )
+        lat2, lon2 = corrigeer_coordinaten(
+            df.at[i + 1, 'latitude'], df.at[i + 1, 'lat_direction'],
+            df.at[i + 1, 'longitude'], df.at[i + 1, 'lon_direction']
+        )
+        afstand = haversine(lat1, lon1, lat2, lon2)
+        hoogteverschil = df.at[i + 1, 'hoogte'] - df.at[i, 'hoogte']
+        afstanden.append(afstand)
+        hoogteverschillen.append(hoogteverschil)
+
+    # Voeg de berekende kolommen toe aan het subset
+    subset_df['afstand'] = afstanden
+    subset_df['hoogteverschil'] = hoogteverschillen
+    subset_df['cumulatieve_afstand'] = subset_df['afstand'].cumsum()
+    subset_df['cumulatief_hoogteverschil'] = subset_df['hoogteverschil'].cumsum()
+
+    return subset_df
+
+def plot_hoogte_vs_afstand_met_fit(dataframe, polynoom_graad):
+    """
+    Visualiseert de relatie tussen cumulatieve afstand en cumulatief hoogteverschil,
+    past een polynoom van de opgegeven graad aan de data, en toont de fit op de plot.
+
+    Parameters:
+    dataframe (pd.DataFrame): DataFrame met de kolommen 'cumulatieve_afstand' en 'cumulatief_hoogteverschil'.
+    polynoom_graad (int): De graad van de polynoom die aan de data wordt aangepast.
+
+    Returns:
+    np.poly1d: De polynoom die is aangepast aan de data.
+    """
+    # Extractie van de benodigde data
+    x = dataframe['cumulatieve_afstand']
+    y = dataframe['cumulatief_hoogteverschil']
+
+    # Berekening van de polynoomfit
+    coefficients = np.polyfit(x, y, polynoom_graad)
+    polynomial = np.poly1d(coefficients)
+    y_fit = polynomial(x)
+
+    # Plotten van de data en de polynoomfit
+    plt.figure(figsize=(10, 6))
+    plt.scatter(x, y, label='Datapunten')
+    plt.plot(x, y_fit, color='purple', linestyle='-', linewidth=2, label=f'Beste fit (graad {polynoom_graad})')
+
+    # Genereren van de polynoomvergelijking als string
+    fit_equation = "y = " + " + ".join(
+        [f"{coef:.2e}x^{polynoom_graad - i}" if polynoom_graad - i > 0 else f"{coef:.2e}" for i, coef in enumerate(coefficients)]
+    )
+
+    # Toevoegen van de polynoomvergelijking aan de plot
+    plt.text(
+        0.05 * max(x),
+        0.85 * max(y),
+        fit_equation,
+        color='purple',
+        fontsize=10,
+        bbox=dict(facecolor='white', alpha=0.6)
+    )
+
+    # Toevoegen van labels en titel
+    plt.xlabel('Cumulatieve Afstand (m)', fontsize=14)
+    plt.ylabel('Cumulatief Hoogteverschil (m)', fontsize=14)
+    plt.title('Cumulatief Hoogteverschil vs. Cumulatieve Afstand', fontsize=16)
+    plt.grid(visible=True, linestyle='--', alpha=0.7)
+    plt.legend(fontsize=12, loc='lower left')
+    plt.tight_layout()
+    plt.show()
+
+    # Afdrukken van de polynoomvergelijking
+    print(fit_equation)
+
+    return polynomial
+
+def plot_polynomial_fit(polynomial, x_fit_range, aantal_punten):
+    """
+    Plot de polynoomfit over een gespecificeerd bereik met een bepaald aantal punten.
+
+    Parameters:
+    polynomial (np.poly1d): De polynoom die aan de data is aangepast.
+    x_fit_range (tuple): Een tuple met (start, stop) waarden voor het x-bereik.
+    aantal_punten (int): Het aantal punten om te genereren tussen start en stop.
+
+    Returns:
+    None
+    """
+    # Genereren van x-waarden voor de fit
+    x_fit = np.linspace(x_fit_range[0], x_fit_range[1], aantal_punten)
+    h = polynomial(x_fit)
+
+    # Plotten van de polynoomfit
+    plt.figure(figsize=(10, 6))
+    plt.plot(x_fit, h, color='purple', linestyle='-', linewidth=2, label=f'Polynoom fit (graad {len(polynomial)})')
+    plt.grid(visible=True, linestyle='--', alpha=0.7)
+    plt.xlabel('Cumulatieve Afstand (m)', fontsize=14)
+    plt.ylabel('Cumulatief Hoogteverschil (m)', fontsize=14)
+    plt.title('Fit voor hoogteprofiel rechte stuk', fontsize=16)
+    plt.legend(fontsize=12)
+    plt.tight_layout()
+    plt.show()
+
+def verwerk_motordriver_data(directory, file_motordriver, start_row, end_row):
+    """
+    Laadt motordriver-data in, selecteert een subset van rijen, corrigeert GPS-coördinaten
+    en voegt snelheden in m/s toe.
+
+    Parameters:
+    directory (str): Pad naar de directory met het databestand.
+    file_motordriver (str): Naam van het motordriver-databestand.
+    start_row (int): Startindex van de te selecteren rijen (inclusief).
+    end_row (int): Eindindex van de te selecteren rijen (inclusief).
+
+    Returns:
+    pd.DataFrame: Geprocessed DataFrame met geselecteerde rijen, gecorrigeerde GPS-coördinaten
+                  en snelheden in m/s.
+    """
+    # Inladen motordriver
+    data_file_motordriver = lib.DataInladenMotorDriver(f'{directory}{file_motordriver}')
+
+    # Selecteer de gewenste rijen
+    subset_df = data_file_motordriver.iloc[start_row:end_row + 1].copy()
+
+    # Functie om graden en minuten naar decimale graden om te rekenen
+    def convert_to_decimal_degrees(value):
+        if pd.isna(value):
+            return None
+        degrees = int(value // 100)  # De gehele gradenwaarde
+        minutes = value % 100  # De minutenwaarde
+        decimal_degrees = degrees + (minutes / 60)
+        return decimal_degrees
+
+    subset_df['GPS latitude, in graden']=subset_df['GPS latitude, in graden']*-1
+
+    # Pas de functie toe op latitude en longitude kolommen
+    subset_df['GPS latitude, in graden'] = subset_df['GPS latitude, in graden'].apply(
+        lambda x: convert_to_decimal_degrees(x) if pd.notna(x) else None
+    )
+    subset_df['GPS longitude, in graden'] = subset_df['GPS longitude, in graden'].apply(
+        lambda x: -convert_to_decimal_degrees(abs(x)) if pd.notna(x) and x < 0 else convert_to_decimal_degrees(x) if pd.notna(x) else None
+    )
+
+    # Voeg wielsnelheid in m/s toe
+    subset_df['Wielsnelheid, in m/s'] = subset_df['Wielsnelheid, in km/h'] / 3.6
+
+    # Voeg GPS-snelheid in m/s toe
+    subset_df['GPS speed, in m/s'] = subset_df['GPS speed, in km/h'] / 3.6
+
+    return subset_df

@@ -1492,7 +1492,10 @@ def bereken_energie(df):
     df_e["delta afstand (m)"] = df["Afgelegde afstand sinds laatste herstart motordriver (m)"].diff()
     df_e["delta energie berekend en gemeten (J)"] = df_e["Energie verschil berekend en gemeten (J)"].diff()
 
-    df_e['Weerstand met GPS Snelheid (N)'] = df_e["delta energie berekend en gemeten (J)"] / df_e_kin[
+    df_e['Weerstand met GPS Snelheid (N)'] = df_e["delta energie berekend en gemeten (J)"] / df_e[
         "delta afstand (m)"]
+
+    #Voeg kolom met afgelegde (m) toe
+    df_e['afgelegde afstand (m)'] = df_e['delta afstand (m)'].cumsum()
 
     return df_e

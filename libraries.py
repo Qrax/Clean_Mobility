@@ -1436,67 +1436,72 @@ def analyseer_hoogteprofiel(dataframe, polynoom_graad, x_fit_start, x_fit_end, n
     return df_h
 
 
+import numpy as np
+
+
+# Bereken de afstand op basis van GPS-coördinaten (haversine-methode)
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371000  # Straal van de aarde in meters
+    lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = np.sin(dlat / 2.0) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2.0) ** 2
+    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+    return R * c
+
+
+# Hoofdenergie-berekeningsfunctie
 def bereken_energie(df):
     """
-    Bereken de potentiële en kinetische energie op basis van hoogte- en snelheidsgegevens in het DataFrame.
+    Bereken de potentiële en kinetische energie op basis van hoogte-, snelheid- en GPS-afstandsgegevens.
 
     Parameters:
-    df (pd.DataFrame): DataFrame met de kolommen 'hoogteverschil (m)', 'Wielsnelheid, in m/s' en 'GPS speed, in m/s'.
-    massa (float): Massa van het object in kilogram.
+    df (pd.DataFrame): DataFrame met de kolommen 'hoogteverschil (m)', 'Wielsnelheid, in m/s',
+                       'GPS speed, in m/s', 'GPS latitude, in graden', 'GPS longitude, in graden'.
 
     Returns:
-    pd.DataFrame: DataFrame met de berekende potentiële en kinetische energieën.
+    pd.DataFrame: DataFrame met berekende energieën en weerstand.
     """
     g = 9.81  # Zwaartekrachtsversnelling in m/s²
-    massa = 90
+    massa = 90  # Massa van het object in kilogram
 
-    # Initiële snelheid in m/s
-    begin_snelheid = df.loc[df.index[0], "Wielsnelheid, in m/s"]
-    begin_snelheid_GPS = df.loc[df.index[0], "GPS speed, in m/s"]
+    # Bereken GPS-afstanden tussen opeenvolgende punten
+    df['GPS afstand (m)'] = haversine(
+        df['GPS latitude, in graden'].shift(1),
+        df['GPS longitude, in graden'].shift(1),
+        df['GPS latitude, in graden'],
+        df['GPS longitude, in graden']
+    )
 
-    # Bereken de initiële kinetische energie
+    # Zorg ervoor dat nullen vervangen worden door 0 voor afstand
+    df['GPS afstand (m)'] = df['GPS afstand (m)'].fillna(0)
+
+    # Berekeningen
+    initiele_hoogte = df['hoogteverschil (m)'].iloc[-1]
+    begin_snelheid = df['GPS speed, in m/s'].iloc[0]
     initiele_kinetische_energie = 0.5 * massa * begin_snelheid ** 2
-    initiele_kinetische_energie_GPS = 0.5 * massa * begin_snelheid_GPS ** 2
 
-    # Maak een nieuwe DataFrame voor de energieën
-    df_e = pd.DataFrame(index=df.index)
+    df['Potentiële Energie (J)'] = massa * g * (df['hoogteverschil (m)'] - initiele_hoogte).abs()
+    df['Delta Potentiële Energie (J)'] = df['Potentiële Energie (J)'].diff().fillna(0)
+    df['Cumulatieve Omzetting naar Kinetische Energie (J)'] = df['Delta Potentiële Energie (J)'].cumsum()
+    df['Theoretische Kinetische Energie (J)'] = initiele_kinetische_energie - df[
+        'Cumulatieve Omzetting naar Kinetische Energie (J)']
+    df['Totale theoretische energie (J)'] = df['Theoretische Kinetische Energie (J)'] + df['Potentiële Energie (J)']
 
-    # Bereken het initiële hoogteverschil
-    initiele_hoogte = df.loc[df.index[-1], 'hoogteverschil (m)']
+    # Berekening gemeten kinetische energie
+    df['Gemeten kinetische energie (GPS) (J)'] = 0.5 * massa * df['GPS speed, in m/s'] ** 2
+    df['Totale gemeten energie (GPS) (J)'] = df['Gemeten kinetische energie (GPS) (J)'] + df['Potentiële Energie (J)']
 
-    # Bereken potentiële energie per punt op basis van de hoogteverschillen
-    df_e['Potentiële Energie (J)'] = massa * g * abs((df['hoogteverschil (m)'] - initiele_hoogte))
+    # Berekening van weerstand
+    df['Energie verschil berekend en gemeten (J)'] = df['Totale theoretische energie (J)'] - df[
+        'Totale gemeten energie (GPS) (J)']
+    df['delta energie berekend en gemeten (J)'] = df['Energie verschil berekend en gemeten (J)'].diff()
+    df['GPS afstand diff (m)'] = df['GPS afstand (m)'].diff()
+    df['Weerstand met GPS Snelheid (N)'] = df['delta energie berekend en gemeten (J)'] / df['GPS afstand diff (m)']
 
-    # Bereken het verschil in potentiële energie ten opzichte van het vorige punt
-    df_e['Delta Potentiële Energie (J)'] = df_e['Potentiële Energie (J)'].diff().fillna(0)
+    # Cumulatieve afgelegde afstand
+    df['Afgelegde afstand (m)'] = df['GPS afstand (m)'].cumsum()
 
-    # Bereken de cumulatieve som van de omzetting naar kinetische energie
-    df_e['Cumulatieve Omzetting naar Kinetische Energie (J)'] = df_e['Delta Potentiële Energie (J)'].cumsum()
+    return df
 
-    # Bereken de theoretische kinetische energie
-    df_e['Theoretische Kinetische Energie (J)'] = initiele_kinetische_energie_GPS - df_e['Cumulatieve Omzetting naar Kinetische Energie (J)']
-    df_e['Totale theoretische energie (J)'] = df_e['Theoretische Kinetische Energie (J)'] + df_e['Potentiële Energie (J)']
 
-    #Bereken de kinetische energie op basis van Wielsnelheid
-    df_e['Gemeten kinetische energie (Wielsnelheid) (J)'] = 0.5 * massa * df['Wielsnelheid, in m/s'] ** 2
-    df_e['Gemeten kinetische energie (Wielsnelheid) (J)'] = df_e['Gemeten kinetische energie (Wielsnelheid) (J)']
-    df_e['Totale gemeten energie (Wielsnelheid) (J)'] = df_e['Potentiële Energie (J)'] + df_e['Gemeten kinetische energie (Wielsnelheid) (J)']
-
-    #Bereken de kinetische energie op basis van GPS-snelheid
-    df_e['Gemeten kinetische energie (GPS) (J)'] = 0.5 * massa * df['GPS speed, in m/s'] ** 2
-    df_e['Gemeten kinetische energie (GPS) (J)'] = df_e['Gemeten kinetische energie (GPS) (J)']
-    df_e['Totale gemeten energie (GPS) (J)'] = df_e['Potentiële Energie (J)'] + df_e['Gemeten kinetische energie (GPS) (J)']
-
-    #Bereken de Weerstand
-    df_e["Energie verschil berekend en gemeten (J)"]= df_e['Totale theoretische energie (J)'] - df_e['Totale gemeten energie (GPS) (J)']
-    df_e["delta energie berekend en gemeten (J)"] = df_e["Energie verschil berekend en gemeten (J)"].diff()
-    df_e["delta afstand (m)"] = df["Afgelegde afstand sinds laatste herstart motordriver (m)"].diff()
-    df_e["delta energie berekend en gemeten (J)"] = df_e["Energie verschil berekend en gemeten (J)"].diff()
-
-    df_e['Weerstand met GPS Snelheid (N)'] = df_e["delta energie berekend en gemeten (J)"] / df_e[
-        "delta afstand (m)"]
-
-    #Voeg kolom met afgelegde (m) toe
-    df_e['afgelegde afstand (m)'] = df_e['delta afstand (m)'].cumsum()
-
-    return df_e

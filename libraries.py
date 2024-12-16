@@ -1479,7 +1479,7 @@ def bereken_energie(df):
     # Berekeningen
     initiele_hoogte = df['hoogteverschil (m)'].iloc[-1]
     begin_snelheid = df['GPS speed, in m/s'].iloc[0]
-    initiele_kinetische_energie = 0.5 * massa * begin_snelheid ** 2
+    initiele_kinetische_energie = 0.5 * massa * (begin_snelheid ** 2)
 
     df['Potentiële Energie (J)'] = massa * g * (df['hoogteverschil (m)'] - initiele_hoogte).abs()
     df['Delta Potentiële Energie (J)'] = df['Potentiële Energie (J)'].diff().fillna(0)
@@ -1489,7 +1489,7 @@ def bereken_energie(df):
     df['Totale theoretische energie (J)'] = df['Theoretische Kinetische Energie (J)'] + df['Potentiële Energie (J)']
 
     # Berekening gemeten kinetische energie
-    df['Gemeten kinetische energie (GPS) (J)'] = 0.5 * massa * df['GPS speed, in m/s'] ** 2
+    df['Gemeten kinetische energie (GPS) (J)'] = 0.5 * massa * (df['GPS speed, in m/s'] ** 2)
     df['Totale gemeten energie (GPS) (J)'] = df['Gemeten kinetische energie (GPS) (J)'] + df['Potentiële Energie (J)']
 
     # Berekening van weerstand
@@ -1505,3 +1505,73 @@ def bereken_energie(df):
     return df
 
 
+def process_angular_data(df, direction_col='GPS direction', reference_direction=90.0):
+    """
+    Process angular data in a DataFrame: calculate angular differences, assign colors, and labels.
+
+    Parameters:
+        df (pd.DataFrame): DataFrame containing the GPS direction data.
+        direction_col (str): Name of the column with GPS directions (default: 'GPS direction').
+        reference_direction (float): Reference direction in degrees to calculate the difference (default: 90.0).
+
+    Returns:
+        pd.DataFrame: Updated DataFrame with additional columns:
+            - 'Angular Difference (°)': Angular difference between consecutive directions.
+            - 'Difference from Reference (°)': Angular difference from the reference direction.
+            - 'Color': Color assigned based on the difference from the reference.
+            - 'Label': Label assigned based on the difference from the reference.
+    """
+    def angular_difference(dir1, dir2):
+        """Calculate the angular difference between two directions."""
+        delta_theta = abs(dir2 - dir1)
+        return min(delta_theta, 360 - delta_theta)
+
+    def assign_color(bearing):
+        """Assign colors based on the angular difference."""
+        if bearing == 0:
+            return 'red'
+        elif 0 < bearing <= 15:
+            return 'orange'
+        elif 15 < bearing <= 30:
+            return 'yellow'
+        elif 30 < bearing <= 45:
+            return 'green'
+        elif 45 < bearing <= 60:
+            return 'purple'
+        else:
+            return 'black'  # Default color for other cases
+
+    def assign_label(bearing):
+        """Assign labels based on the angular difference."""
+        if bearing == 0:
+            return 'Hoek is 0 graden'
+        elif 0 < bearing <= 15:
+            return 'Hoek is tussen 0 en 15 graden'
+        elif 15 < bearing <= 30:
+            return 'Hoek is tussen 15 en 30 graden'
+        elif 30 < bearing <= 45:
+            return 'Hoek is tussen 30 en 45 graden'
+        elif 45 < bearing <= 60:
+            return 'Hoek is tussen 45 en 60 graden'
+        else:
+            return 'Andere hoek'
+
+    # Ensure the direction column exists
+    if direction_col not in df.columns:
+        raise ValueError(f"Column '{direction_col}' not found in DataFrame.")
+
+    # Calculate angular difference between consecutive rows
+    df['Angular Difference (°)'] = df[direction_col].diff().apply(
+        lambda x: angular_difference(x, 0) if pd.notna(x) else None
+    )
+
+    # Calculate angular difference relative to the reference direction
+    df['Difference from Reference (°)'] = df[direction_col].apply(
+        lambda x: angular_difference(x, reference_direction)
+    )
+
+    # Assign colors and labels based on the difference from reference
+    df['Color'] = df['Difference from Reference (°)'].apply(assign_color)
+    df['Label'] = df['Difference from Reference (°)'].apply(assign_label)
+
+    return df

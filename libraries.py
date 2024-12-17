@@ -1538,8 +1538,22 @@ def process_angular_data(df, direction_col='GPS direction', reference_direction=
             return 'green'
         elif 45 < bearing <= 60:
             return 'purple'
+        elif 60 < bearing <= 75:
+            return 'pink'
+        elif 75 < bearing <= 90:
+            return 'olive'
+        elif 90 < bearing <= 115:
+            return 'cyan'
+        elif 115 < bearing <= 130:
+            return 'gray'
+        elif 130 < bearing <= 145:
+            return 'lime'
+        elif 145 < bearing <= 160:
+            return 'navy'
+        elif 160 < bearing <= 175:
+            return 'gold'
         else:
-            return 'black'  # Default color for other cases
+            return 'deeppink'  # Default color for other cases
 
     def assign_label(bearing):
         """Assign labels based on the angular difference."""
@@ -1553,8 +1567,22 @@ def process_angular_data(df, direction_col='GPS direction', reference_direction=
             return 'Hoek is tussen 30 en 45 graden'
         elif 45 < bearing <= 60:
             return 'Hoek is tussen 45 en 60 graden'
+        elif 60 < bearing <= 75:
+            return 'Hoek is tussen 60 en 75 graden'
+        elif 75 < bearing <= 90:
+            return 'Hoek is tussen 75 en 90 graden'
+        elif 90 < bearing <= 115:
+            return 'Hoek is tussen 90 en 115 graden'
+        elif 115 < bearing <= 130:
+            return 'Hoek is tussen 115 en 130 graden'
+        elif 130 < bearing <= 145:
+            return 'Hoek is tussen 130 en 145 graden'
+        elif 145 < bearing <= 160:
+            return 'Hoek is tussen 145 en 160 graden'
+        elif 160 < bearing <= 175:
+            return 'Hoek is tussen 160 en 175 graden'
         else:
-            return 'Andere hoek'
+            return 'Hoek is tussen 175 en 180 graden'
 
     # Ensure the direction column exists
     if direction_col not in df.columns:

@@ -1436,9 +1436,6 @@ def analyseer_hoogteprofiel(dataframe, polynoom_graad, x_fit_start, x_fit_end, n
     return df_h
 
 
-import numpy as np
-
-
 # Bereken de afstand op basis van GPS-coördinaten (haversine-methode)
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371000  # Straal van de aarde in meters
@@ -1507,7 +1504,7 @@ def bereken_energie(df):
 
 def process_angular_data(df, direction_col='GPS direction', reference_direction=90.0):
     """
-    Process angular data in a DataFrame: calculate angular differences, assign colors, and labels.
+    Process angular data in a DataFrame: calculate angular differences as bearing, assign colors, and labels.
 
     Parameters:
         df (pd.DataFrame): DataFrame containing the GPS direction data.
@@ -1516,80 +1513,22 @@ def process_angular_data(df, direction_col='GPS direction', reference_direction=
 
     Returns:
         pd.DataFrame: Updated DataFrame with additional columns:
-            - 'Angular Difference (°)': Angular difference between consecutive directions.
+            - 'Bearing (°)': Angular difference between consecutive directions (as bearing).
             - 'Difference from Reference (°)': Angular difference from the reference direction.
-            - 'Color': Color assigned based on the difference from the reference.
-            - 'Label': Label assigned based on the difference from the reference.
+            - 'Color': Color assigned based on the bearing.
+            - 'Label': Label assigned based on the bearing.
     """
     def angular_difference(dir1, dir2):
-        """Calculate the angular difference between two directions."""
-        delta_theta = abs(dir2 - dir1)
-        return min(delta_theta, 360 - delta_theta)
-
-    def assign_color(bearing):
-        """Assign colors based on the angular difference."""
-        if bearing == 0:
-            return 'red'
-        elif 0 < bearing <= 15:
-            return 'orange'
-        elif 15 < bearing <= 30:
-            return 'yellow'
-        elif 30 < bearing <= 45:
-            return 'green'
-        elif 45 < bearing <= 60:
-            return 'purple'
-        elif 60 < bearing <= 75:
-            return 'pink'
-        elif 75 < bearing <= 90:
-            return 'olive'
-        elif 90 < bearing <= 115:
-            return 'cyan'
-        elif 115 < bearing <= 130:
-            return 'gray'
-        elif 130 < bearing <= 145:
-            return 'lime'
-        elif 145 < bearing <= 160:
-            return 'navy'
-        elif 160 < bearing <= 175:
-            return 'gold'
-        else:
-            return 'deeppink'  # Default color for other cases
-
-    def assign_label(bearing):
-        """Assign labels based on the angular difference."""
-        if bearing == 0:
-            return 'Hoek is 0 graden'
-        elif 0 < bearing <= 15:
-            return 'Hoek is tussen 0 en 15 graden'
-        elif 15 < bearing <= 30:
-            return 'Hoek is tussen 15 en 30 graden'
-        elif 30 < bearing <= 45:
-            return 'Hoek is tussen 30 en 45 graden'
-        elif 45 < bearing <= 60:
-            return 'Hoek is tussen 45 en 60 graden'
-        elif 60 < bearing <= 75:
-            return 'Hoek is tussen 60 en 75 graden'
-        elif 75 < bearing <= 90:
-            return 'Hoek is tussen 75 en 90 graden'
-        elif 90 < bearing <= 115:
-            return 'Hoek is tussen 90 en 115 graden'
-        elif 115 < bearing <= 130:
-            return 'Hoek is tussen 115 en 130 graden'
-        elif 130 < bearing <= 145:
-            return 'Hoek is tussen 130 en 145 graden'
-        elif 145 < bearing <= 160:
-            return 'Hoek is tussen 145 en 160 graden'
-        elif 160 < bearing <= 175:
-            return 'Hoek is tussen 160 en 175 graden'
-        else:
-            return 'Hoek is tussen 175 en 180 graden'
+        """Calculate the angular difference between two directions (0 to 180 degrees)."""
+        diff = abs(dir2 - dir1) % 360
+        return diff if diff <= 180 else 360 - diff
 
     # Ensure the direction column exists
     if direction_col not in df.columns:
         raise ValueError(f"Column '{direction_col}' not found in DataFrame.")
 
-    # Calculate angular difference between consecutive rows
-    df['Angular Difference (°)'] = df[direction_col].diff().apply(
+    # Calculate angular difference (bearing) between consecutive rows
+    df['Bearing (°)'] = df[direction_col].diff().apply(
         lambda x: angular_difference(x, 0) if pd.notna(x) else None
     )
 
@@ -1598,8 +1537,56 @@ def process_angular_data(df, direction_col='GPS direction', reference_direction=
         lambda x: angular_difference(x, reference_direction)
     )
 
-    # Assign colors and labels based on the difference from reference
-    df['Color'] = df['Difference from Reference (°)'].apply(assign_color)
-    df['Label'] = df['Difference from Reference (°)'].apply(assign_label)
+    # Function to assign colors based on the bearing
+    def assign_color(bearing):
+        if bearing == 0:
+            return 'red'
+        elif 0 < bearing <= 0.5:
+            return 'orange'
+        elif 0.5 < bearing <= 1.0:
+            return 'yellow'
+        elif 1.0 < bearing <= 1.5:
+            return 'green'
+        elif 1.5 < bearing <= 2.0:
+            return 'purple'
+        elif 2.0 < bearing <= 2.5:
+            return 'pink'
+        elif 2.5 < bearing <= 3.0:
+            return 'olive'
+        elif 3.0 < bearing <= 3.5:
+            return 'cyan'
+        elif 3.5 < bearing <= 4.0:
+            return 'gray'
+        else:
+            return 'deeppink'  # Default color for other cases
+
+    # Function to assign labels based on the bearing
+    def assign_label(bearing):
+        if bearing == 0:
+            return 'Hoek is 0 graden'
+        elif 0 < bearing <= 0.5:
+            return 'Hoek is tussen 0 en 0,5 graden'
+        elif 0.5 < bearing <= 1.0:
+            return 'Hoek is tussen 0,5 en 1,0 graden'
+        elif 1.0 < bearing <= 1.5:
+            return 'Hoek is tussen 1,0 en 1,5 graden'
+        elif 1.5 < bearing <= 2.0:
+            return 'Hoek is tussen 1,5 en 2,0 graden'
+        elif 2.0 < bearing <= 2.5:
+            return 'Hoek is tussen 2,0 en 2,5 graden'
+        elif 2.5 < bearing <= 3.0:
+            return 'Hoek is tussen 2,5 en 3,0 graden'
+        elif 3.0 < bearing <= 3.5:
+            return 'Hoek is tussen 3,0 en 3,5 graden'
+        elif 3.5 < bearing <= 4.0:
+            return 'Hoek is tussen 3,5 en 4,0 graden'
+        elif 4.0 < bearing <= 4.5:
+            return 'Hoek is tussen 4,0 en 4,5 graden'
+        else:
+            return 'Hoek is groter dan 4,5 graden'
+
+    # Assign colors and labels based on the bearing
+    df['Color'] = df['Bearing (°)'].apply(assign_color)
+    df['Label'] = df['Bearing (°)'].apply(assign_label)
 
     return df

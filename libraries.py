@@ -1216,6 +1216,9 @@ def verwerk_motordriver_data(directory, file_motordriver, start_row, end_row):
     # Inladen motordriver
     data_file_motordriver = DataInladenMotorDriver(f'{directory}{file_motordriver}')
 
+    if end_row == -1:
+        end_row = len(data_file_motordriver)  # Automatisch tot de laatste rij
+
     # Selecteer de gewenste rijen
     subset_df = data_file_motordriver.iloc[start_row:end_row + 1].copy()
 
@@ -1228,7 +1231,8 @@ def verwerk_motordriver_data(directory, file_motordriver, start_row, end_row):
         decimal_degrees = degrees + (minutes / 60)
         return decimal_degrees
 
-    subset_df['GPS longitude, in graden']=subset_df['GPS longitude, in graden']*-1
+    subset_df['GPS longitude, in graden']=subset_df['GPS longitude, in graden']
+
 
     # Pas de functie toe op latitude en longitude kolommen
     subset_df['GPS latitude, in graden'] = subset_df['GPS latitude, in graden'].apply(
@@ -1499,3 +1503,54 @@ def bereken_energie(df):
     df_e['afgelegde afstand (m)'] = df_e['delta afstand (m)'].cumsum()
 
     return df_e
+
+
+import pandas as pd
+import numpy as np
+
+import pandas as pd
+import numpy as np
+
+
+def bereken_rendement_met_GPS_delta(df, massa=90):
+    # Kinetische energie berekenen
+    df['Kinetische energie (GPS) (J)'] = 0.5 * massa * df['GPS speed, in m/s'] ** 2
+
+    # Detecteer veranderingen in GPS-snelheid
+    df['GPS_snelheid_veranderd'] = df['GPS speed, in m/s'].ne(df['GPS speed, in m/s'].shift())
+
+    # Delta energie geleverd berekenen bij GPS-veranderingen
+    delta_energie_tussen_punten = []
+    last_energy = df.loc[df.index[0], 'Energie geleverd aan de motor sinds reset (J)']
+
+    for index, changed in enumerate(df['GPS_snelheid_veranderd']):
+        if changed:  # Bereken alleen bij verandering
+            current_energy = df.loc[df.index[index], 'Energie geleverd aan de motor sinds reset (J)']
+            delta_energie_tussen_punten.append(current_energy - last_energy)
+            last_energy = current_energy
+        else:
+            delta_energie_tussen_punten.append(np.nan)
+
+    df['Delta energie geleverd (bij GPS verandering)'] = pd.Series(delta_energie_tussen_punten, index=df.index)
+
+    # Delta kinetische energie berekenen bij GPS-veranderingen
+    df['Delta kinetische energie (GPS)'] = df['Kinetische energie (GPS) (J)'].where(df['GPS_snelheid_veranderd']).diff()
+
+    # Rendement berekenen
+    df['Rendement (bij GPS verandering) (%)'] = (df['Delta kinetische energie (GPS)'] /
+                                                 df['Delta energie geleverd (bij GPS verandering)']) * 100
+
+    # Problematische waarden (inf of NaN) vervangen
+    df['Rendement (bij GPS verandering) (%)'] = df['Rendement (bij GPS verandering) (%)'].replace([np.inf, -np.inf],
+                                                                                                  np.nan)
+
+    return df
+
+
+
+
+
+
+
+
+

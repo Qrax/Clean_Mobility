@@ -1340,7 +1340,7 @@ def plot_gps_power(df, custom_points=None):
     """
     df = df.reset_index().rename(columns={'index': 'row_index'})
     # Voeg een kolom toe voor de kleur op basis van het vermogen
-    df['Kleur'] = df['Vermogen geleverd aan de motor (W)'].apply(lambda x: 'Geel' if -1 <= x <= 1 else 'Blauw'
+    df['Kleur'] = df['Vermogen geleverd aan de motor (W)'].apply(lambda x: 'Geel' if -2 <= x <= 2 else 'Blauw'
 )
 
     # Maak de scatterplot
